@@ -1,18 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { SEED_TRAINING, SEED_LIBRARY } from '../lib/constants';
+import { cloudLoad, cloudSave } from '../lib/cloudSync';
 
 const cloneSeed = () => JSON.parse(JSON.stringify(SEED_TRAINING));
-
 const cloneLibrary = () => JSON.parse(JSON.stringify(SEED_LIBRARY));
+
+const CLOUD_KEY = 'training';
 
 export const useTrainingStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       days: cloneSeed(),
       log: {}, // { [exId]: [ { date, reps, sets, weight, vol } ] }
-      // Biblioteca de ejercicios: persiste aunque se eliminen de los días de entreno
-      library: cloneLibrary(), // { id, name, tech, muscle }
+      library: cloneLibrary(),
 
       updateExercise: (dayIdx, exIdx, field, value) =>
         set((s) => {
@@ -43,7 +44,6 @@ export const useTrainingStore = create(
           const days = s.days.map((d, di) =>
             di === dayIdx ? { ...d, exercises: [...d.exercises, ex] } : d
           );
-          // Agregar a biblioteca si no existe por id o por nombre+músculo
           const inLib = s.library.some(
             (l) => l.id === id || (l.name.toLowerCase() === ex.name.toLowerCase() && l.muscle === ex.muscle)
           );
@@ -53,7 +53,6 @@ export const useTrainingStore = create(
           return { days, library };
         }),
 
-      // Solo agrega a la biblioteca sin añadir a ningún día
       addToLibrary: (exercise) =>
         set((s) => {
           const inLib = s.library.some(
@@ -69,12 +68,9 @@ export const useTrainingStore = create(
           const exercises = [...s.days[dayIdx].exercises];
           const [moved] = exercises.splice(fromIdx, 1);
           exercises.splice(toIdx, 0, moved);
-          return {
-            days: s.days.map((d, di) => (di === dayIdx ? { ...d, exercises } : d)),
-          };
+          return { days: s.days.map((d, di) => (di === dayIdx ? { ...d, exercises } : d)) };
         }),
 
-      // Solo quita del día — la bitácora y la biblioteca no se tocan
       deleteExercise: (dayIdx, exIdx) =>
         set((s) => ({
           days: s.days.map((d, di) =>
@@ -94,6 +90,22 @@ export const useTrainingStore = create(
         set((s) => ({ log: { ...s.log, [exId]: [] } })),
 
       resetSeed: () => set({ days: cloneSeed(), log: {}, library: cloneLibrary() }),
+
+      // ── Cloud sync ──────────────────────────────────────────────
+      _initCloud: async () => {
+        const data = await cloudLoad(CLOUD_KEY);
+        if (data?.days) {
+          set({ days: data.days, log: data.log || {}, library: data.library || cloneLibrary() });
+        } else {
+          // Primera vez: subir el estado actual a la nube
+          const { days, log, library } = get();
+          cloudSave(CLOUD_KEY, { days, log, library });
+        }
+        // Suscribir cambios futuros → guardar en la nube
+        useTrainingStore.subscribe((s) => {
+          cloudSave(CLOUD_KEY, { days: s.days, log: s.log, library: s.library });
+        });
+      },
     }),
     { name: 'dieta2025_training' }
   )

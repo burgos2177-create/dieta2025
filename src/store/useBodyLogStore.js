@@ -1,11 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { cloudLoad, cloudSave } from '../lib/cloudSync';
 
-/**
- * Body composition log store.
- * Entries persist a dated snapshot of body metrics + optional compressed image.
- * entries is always kept sorted by date ascending.
- */
+const CLOUD_KEY = 'bodylog';
+
 export const useBodyLogStore = create(
   persist(
     (set, get) => ({
@@ -29,18 +27,33 @@ export const useBodyLogStore = create(
         set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
 
       clear: () => set({ entries: [] }),
+
+      // ── Cloud sync ──────────────────────────────────────────────
+      _initCloud: async () => {
+        const data = await cloudLoad(CLOUD_KEY);
+        if (data?.entries) {
+          // Las fotos (base64) no se suben a Firestore — se quedan solo en local
+          const local = get().entries;
+          const merged = data.entries.map((e) => {
+            const localEntry = local.find((l) => l.id === e.id);
+            return localEntry?.photo ? { ...e, photo: localEntry.photo } : e;
+          });
+          set({ entries: merged });
+        } else {
+          // Subir sin fotos (para no exceder límite de 1MB de Firestore)
+          const entries = get().entries.map(({ photo, ...e }) => e);
+          cloudSave(CLOUD_KEY, { entries });
+        }
+        useBodyLogStore.subscribe((s) => {
+          const entries = s.entries.map(({ photo, ...e }) => e);
+          cloudSave(CLOUD_KEY, { entries });
+        });
+      },
     }),
-    {
-      name: 'dieta2025_bodylog',
-    }
+    { name: 'dieta2025_bodylog' }
   )
 );
 
-/**
- * Compress an uploaded image file to a small JPEG DataURL
- * so it fits safely in localStorage (~50-150kB per snapshot).
- * Returns a Promise<string> with the DataURL.
- */
 export function compressImageFile(file, maxDim = 900, quality = 0.72) {
   return new Promise((resolve, reject) => {
     if (!file) return resolve(null);
@@ -61,8 +74,7 @@ export function compressImageFile(file, maxDim = 900, quality = 0.72) {
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.src = reader.result;

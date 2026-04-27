@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { buildSeedNutPlan } from '../lib/constants';
+import { cloudLoad, cloudSave } from '../lib/cloudSync';
+
+const CLOUD_KEY = 'nutrition';
 
 function ensure7Days(plan) {
   const out = { ...plan };
@@ -38,6 +41,19 @@ export const useNutritionStore = create(
           return { plan: { ...plan } };
         }),
       resetSeed: () => set({ plan: buildSeedNutPlan() }),
+
+      // ── Cloud sync ──────────────────────────────────────────────
+      _initCloud: async () => {
+        const data = await cloudLoad(CLOUD_KEY);
+        if (data?.plan) {
+          set({ plan: ensure7Days(data.plan) });
+        } else {
+          cloudSave(CLOUD_KEY, { plan: get().plan });
+        }
+        useNutritionStore.subscribe((s) => {
+          cloudSave(CLOUD_KEY, { plan: s.plan });
+        });
+      },
     }),
     {
       name: 'dieta2025_nutrition',
