@@ -1,0 +1,190 @@
+// ==============================
+// DAYS — week layout (Lyle cycling)
+// D1,3,5 = alto · D2,4,6 = bajo · D7 = normo
+// ==============================
+export const DAYS = [
+  { label: 'L',  name: 'Lunes',     type: 'train', workout: 'Pierna' },
+  { label: 'M',  name: 'Martes',    type: 'rest',  workout: 'Descanso' },
+  { label: 'Mi', name: 'Miércoles', type: 'train', workout: 'Jalón / Bícep' },
+  { label: 'J',  name: 'Jueves',    type: 'rest',  workout: 'Descanso' },
+  { label: 'V',  name: 'Viernes',   type: 'train', workout: 'Empuje' },
+  { label: 'S',  name: 'Sábado',    type: 'rest',  workout: 'Descanso' },
+  { label: 'D',  name: 'Domingo',   type: 'normo', workout: 'Descanso' },
+];
+
+export const MEALS_CONFIG = [
+  { id: 'desayuno', icon: '☀️', label: 'Desayuno', sub: 'Mañana' },
+  { id: 'almuerzo', icon: '🌤', label: 'Almuerzo', sub: 'Media mañana' },
+  { id: 'comida',   icon: '🍽', label: 'Comida',   sub: 'Mediodía' },
+  { id: 'cena',     icon: '🌙', label: 'Cena',     sub: 'Noche' },
+];
+
+// ==============================
+// MUSCLE LABELS & COLORS
+// ==============================
+export const MUSCLE_LABELS = {
+  CUAD: 'Cuádriceps',
+  ISQUIOS: 'Isquiotibiales',
+  GLUTEOS: 'Glúteos',
+  PECHO: 'Pectoral',
+  ESPALDA: 'Espalda',
+  DELTOIDES: 'Deltoides',
+  BICEP: 'Bíceps',
+  TRICEP: 'Tríceps',
+  TRAPECIO: 'Trapecio',
+  PANTORRILLA: 'Gemelos/Sóleo',
+  CORE: 'Core',
+};
+
+export const MUSCLE_COLORS = {
+  CUAD: '#a78bfa',
+  ISQUIOS: '#f87171',
+  GLUTEOS: '#fb923c',
+  PECHO: '#f472b6',
+  ESPALDA: '#4ade80',
+  DELTOIDES: '#38bdf8',
+  BICEP: '#60a5fa',
+  TRICEP: '#fbbf24',
+  TRAPECIO: '#94a3b8',
+  PANTORRILLA: '#a3e635',
+  CORE: '#c084fc',
+};
+
+// ==============================
+// TRAINING DAYS CONFIG
+// ==============================
+export const TR_DAYS_CONFIG = [
+  { label: 'LUNES',     focus: 'Pierna',                              color: 'cyan'   },
+  { label: 'MIÉRCOLES', focus: 'Jalón / Espalda + Bícep',             color: 'green'  },
+  { label: 'VIERNES',   focus: 'Empuje: Pecho + Hombro + Trícep',     color: 'yellow' },
+];
+
+// ==============================
+// SEED — TRAINING (22 ejercicios del Excel original)
+// ==============================
+export const SEED_TRAINING = [
+  { label: 'LUNES', focus: 'Pierna', exercises: [
+    { id: 'e001', name: 'Sentadilla Hack',          tech: 'Cluster Set 3+3+2-3 · 20seg', muscle: 'CUAD',        reps: 9,  sets: 3, weight: 111   },
+    { id: 'e002', name: 'Sentadilla Búlgara Manc.', tech: 'Tempo 4-1-1 seg',             muscle: 'CUAD',        reps: 10, sets: 3, weight: 11.3  },
+    { id: 'e003', name: 'Extensión cuadrícep',      tech: 'Drop Set + Iso 2-3 seg',      muscle: 'CUAD',        reps: 15, sets: 2, weight: 36    },
+    { id: 'e004', name: 'Peso muerto rumano',       tech: 'Negativas 4-5 seg',           muscle: 'ISQUIOS',     reps: 8,  sets: 4, weight: 85    },
+    { id: 'e005', name: 'Curl femoral sentado',     tech: 'Myo-reps 12 + 4×3-4 · 15seg', muscle: 'ISQUIOS',     reps: 12, sets: 4, weight: 36.3  },
+    { id: 'e006', name: 'Elevación de talón',       tech: 'Rest Pause 12,5,3 · 15seg',   muscle: 'PANTORRILLA', reps: 12, sets: 4, weight: 15.9  },
+    { id: 'e007', name: 'Elevación talón sentado',  tech: 'Parciales + Drop Set',        muscle: 'PANTORRILLA', reps: 15, sets: 4, weight: 18.1  },
+  ]},
+  { label: 'MIÉRCOLES', focus: 'Jalón / Espalda + Bícep', exercises: [
+    { id: 'e008', name: 'Dominadas',                tech: 'Rest Pause (6,3,2 · 15seg)',  muscle: 'ESPALDA', reps: 8,  sets: 3, weight: 0   },
+    { id: 'e009', name: 'Remo con barra en T',      tech: 'Tempo 3-1 seg negativa',      muscle: 'ESPALDA', reps: 10, sets: 3, weight: 41  },
+    { id: 'e010', name: 'Jalón en polea',           tech: 'Drop Set + Parciales últ',    muscle: 'ESPALDA', reps: 12, sets: 2, weight: 41  },
+    { id: 'e011', name: 'Pullover en polea',        tech: 'Myo-reps 12 + 4×3-4 · 15seg', muscle: 'ESPALDA', reps: 15, sets: 2, weight: 23  },
+    { id: 'e012', name: 'Curl barra EZ',            tech: 'Negativas 3-4 seg',           muscle: 'BICEP',   reps: 8,  sets: 3, weight: 30  },
+    { id: 'e013', name: 'Curl inclinado 45° manc.', tech: 'Rest Pause (8,5,3 · 15seg)',  muscle: 'BICEP',   reps: 10, sets: 3, weight: 9   },
+    { id: 'e014', name: 'Curl predicador máquina',  tech: 'Drop Set + Parciales última', muscle: 'BICEP',   reps: 15, sets: 2, weight: 22.7},
+  ]},
+  { label: 'VIERNES', focus: 'Empuje: Pecho + Hombro + Trícep', exercises: [
+    { id: 'e015', name: 'Press inclinado manc.',    tech: 'Rest Pause (6,3,2 · 15seg)',  muscle: 'PECHO',     reps: 8,  sets: 3, weight: 22.5 },
+    { id: 'e016', name: 'Press plano Smith',        tech: 'Cluster Set 3+3+3 · 20seg',   muscle: 'PECHO',     reps: 9,  sets: 3, weight: 40.8 },
+    { id: 'e017', name: 'Pec Fly máquina',          tech: 'Drop Set + Iso 2-3 seg',      muscle: 'PECHO',     reps: 15, sets: 4, weight: 6.4  },
+    { id: 'e018', name: 'Press militar manc.',      tech: 'Cluster Set 3+3+3 · 20seg',   muscle: 'DELTOIDES', reps: 8,  sets: 3, weight: 12.5 },
+    { id: 'e019', name: 'Elev. laterales máquina',  tech: 'Drop Set + Parciales última', muscle: 'DELTOIDES', reps: 12, sets: 3, weight: 12.5 },
+    { id: 'e020', name: 'Fondos trícep',            tech: 'Negativas 3-4 seg',           muscle: 'TRICEP',    reps: 8,  sets: 3, weight: 0    },
+    { id: 'e021', name: 'Extensión polea alta',     tech: 'Myo-reps 12 + 4×3-4 · 15seg', muscle: 'TRICEP',    reps: 12, sets: 3, weight: 20   },
+    { id: 'e022', name: 'Copa mancuerna',           tech: 'Drop Set última',             muscle: 'TRICEP',    reps: 15, sets: 2, weight: 27.2 },
+  ]},
+];
+
+// ==============================
+// SEED — FOODS (15 del prototipo)
+// ==============================
+export const SEED_FOODS = [
+  { id: 'f001', name: 'Alpura PRO',           brand: 'Alpura',       category: 'lacteos',    servingSize: 310, servingUnit: 'ml',    kcal: 146, prot: 16.74, carb: 15.81, fat: 1.55, fiber: 0,    sugar: 15.81, sodium: 186, notes: 'Alta en proteína, baja en grasa' },
+  { id: 'f002', name: 'Pechuga de pollo',     brand: '',             category: 'proteina',   servingSize: 100, servingUnit: 'g',     kcal: 165, prot: 31,    carb: 0,     fat: 3.6,  fiber: 0,    sugar: 0,     sodium: 74,  notes: 'Asada, sin piel' },
+  { id: 'f003', name: 'Huevo entero',         brand: '',             category: 'proteina',   servingSize: 50,  servingUnit: 'g',     kcal: 72,  prot: 6.3,   carb: 0.4,   fat: 4.8,  fiber: 0,    sugar: 0.2,   sodium: 71,  notes: '~1 huevo mediano' },
+  { id: 'f004', name: 'Clara de huevo',       brand: '',             category: 'proteina',   servingSize: 30,  servingUnit: 'g',     kcal: 16,  prot: 3.3,   carb: 0.2,   fat: 0.1,  fiber: 0,    sugar: 0.2,   sodium: 55,  notes: '~1 clara mediana' },
+  { id: 'f005', name: 'Avena en hojuelas',    brand: '',             category: 'cereal',     servingSize: 100, servingUnit: 'g',     kcal: 389, prot: 16.9,  carb: 66.3,  fat: 6.9,  fiber: 10.6, sugar: 0,     sodium: 2,   notes: 'Cruda / sin cocinar' },
+  { id: 'f006', name: 'Arroz integral cocido',brand: '',             category: 'cereal',     servingSize: 100, servingUnit: 'g',     kcal: 111, prot: 2.6,   carb: 23,    fat: 0.9,  fiber: 1.8,  sugar: 0,     sodium: 5,   notes: 'Cocido' },
+  { id: 'f007', name: 'Plátano tabasco',      brand: '',             category: 'fruta',      servingSize: 100, servingUnit: 'g',     kcal: 89,  prot: 1.1,   carb: 22.8,  fat: 0.3,  fiber: 2.6,  sugar: 12.2,  sodium: 1,   notes: '~½ plátano grande' },
+  { id: 'f008', name: 'Aguacate hass',        brand: '',             category: 'grasa',      servingSize: 100, servingUnit: 'g',     kcal: 160, prot: 2,     carb: 8.5,   fat: 14.7, fiber: 6.7,  sugar: 0.7,   sodium: 7,   notes: 'Fruta entera' },
+  { id: 'f009', name: 'Nuez de Castilla',     brand: '',             category: 'grasa',      servingSize: 30,  servingUnit: 'g',     kcal: 196, prot: 4.6,   carb: 4.1,   fat: 19.6, fiber: 2,    sugar: 0.7,   sodium: 1,   notes: '~1 puño pequeño' },
+  { id: 'f010', name: 'Pan integral',         brand: 'Bimbo',        category: 'cereal',     servingSize: 30,  servingUnit: 'g',     kcal: 80,  prot: 3.5,   carb: 13,    fat: 1.5,  fiber: 2,    sugar: 1.5,   sodium: 130, notes: '~1 rebanada' },
+  { id: 'f011', name: 'Mantequilla',          brand: '',             category: 'grasa',      servingSize: 5,   servingUnit: 'g',     kcal: 36,  prot: 0,     carb: 0,     fat: 4,    fiber: 0,    sugar: 0,     sodium: 30,  notes: '1 cdita rasa' },
+  { id: 'f012', name: 'Mermelada',            brand: '',             category: 'otro',       servingSize: 20,  servingUnit: 'g',     kcal: 56,  prot: 0.1,   carb: 14,    fat: 0,    fiber: 0.2,  sugar: 12,    sodium: 2,   notes: '~1 cda generosa' },
+  { id: 'f013', name: 'Proteína whey isolate',brand: '',             category: 'suplemento', servingSize: 30,  servingUnit: 'scoop', kcal: 110, prot: 25,    carb: 2,     fat: 0.5,  fiber: 0,    sugar: 1,     sodium: 80,  notes: '1 scoop promedio' },
+  { id: 'f014', name: 'Atún en agua',         brand: 'Marina Azul',  category: 'proteina',   servingSize: 140, servingUnit: 'g',     kcal: 120, prot: 26,    carb: 0,     fat: 1,    fiber: 0,    sugar: 0,     sodium: 250, notes: '1 lata escurrida, bajo sodio' },
+  { id: 'f015', name: 'Arroz blanco cocido',  brand: '',             category: 'cereal',     servingSize: 100, servingUnit: 'g',     kcal: 130, prot: 2.7,   carb: 28.2,  fat: 0.3,  fiber: 0.4,  sugar: 0,     sodium: 1,   notes: 'Cocido' },
+];
+
+export const FOOD_CATEGORIES = [
+  { id: 'lacteos',    label: 'Lácteos' },
+  { id: 'proteina',   label: 'Proteína' },
+  { id: 'cereal',     label: 'Cereal' },
+  { id: 'fruta',      label: 'Fruta' },
+  { id: 'verdura',    label: 'Verdura' },
+  { id: 'grasa',      label: 'Grasa' },
+  { id: 'suplemento', label: 'Suplemento' },
+  { id: 'otro',       label: 'Otro' },
+];
+
+export const SERVING_UNITS = ['g', 'ml', 'pieza', 'scoop', 'taza', 'cda', 'cdita'];
+
+// ==============================
+// SEED — NUTRITION PLAN
+// ==============================
+export function buildSeedNutPlan() {
+  const base = {};
+  for (let d = 0; d < 7; d++) {
+    const extrasEntreno = d % 2 === 0 && d !== 6;
+    base[d] = {
+      desayuno: [
+        { foodId: 'f007', amount: 200, unit: 'g'     },
+        { foodId: 'f013', amount: 30,  unit: 'scoop' },
+        { foodId: 'f001', amount: 312, unit: 'ml'    },
+        { foodId: 'f005', amount: 30,  unit: 'g'     },
+        { foodId: 'f009', amount: 15,  unit: 'g'     },
+      ],
+      almuerzo: [
+        { foodId: 'f003', amount: 150, unit: 'g' },
+        { foodId: 'f004', amount: 150, unit: 'g' },
+        { foodId: 'f011', amount: 5,   unit: 'g' },
+        { foodId: 'f005', amount: 50,  unit: 'g' },
+        { foodId: 'f010', amount: 60,  unit: 'g' },
+        { foodId: 'f008', amount: 50,  unit: 'g' },
+      ],
+      comida: [
+        { foodId: 'f002', amount: 150, unit: 'g' },
+        { foodId: 'f006', amount: 200, unit: 'g' },
+        ...(extrasEntreno ? [
+          { foodId: 'f005', amount: 130, unit: 'g' },
+          { foodId: 'f011', amount: 5,   unit: 'g' },
+          { foodId: 'f010', amount: 60,  unit: 'g' },
+          { foodId: 'f012', amount: 30,  unit: 'g' },
+        ] : []),
+      ],
+      cena: [
+        { foodId: 'f014', amount: 280, unit: 'g' },
+        { foodId: 'f006', amount: 150, unit: 'g' },
+        { foodId: 'f005', amount: 50,  unit: 'g' },
+        { foodId: 'f007', amount: 200, unit: 'g' },
+      ],
+    };
+  }
+  return base;
+}
+
+// Activity levels (Harris-Benedict multipliers)
+export const ACTIVITY_LEVELS = [
+  { id: 1.2,   label: 'Sedentario' },
+  { id: 1.375, label: 'Ligero (1-3 d/sem)' },
+  { id: 1.55,  label: 'Moderado (3-5 d/sem)' },
+  { id: 1.725, label: 'Alto (6-7 d/sem)' },
+  { id: 1.9,   label: 'Atleta (2×/día)' },
+];
+
+// Macro presets
+export const MACRO_PRESETS = [
+  { id: 'recomp',    label: 'Recomposición Lyle', carb: 40, prot: 40, lip: 20 },
+  { id: 'cut',       label: 'Definición Lyle',    carb: 35, prot: 45, lip: 20 },
+  { id: 'zone',      label: 'Zona',               carb: 40, prot: 30, lip: 30 },
+  { id: 'highcarb',  label: 'Alto carbohidrato',  carb: 60, prot: 25, lip: 15 },
+  { id: 'highprot',  label: 'Alto proteína',      carb: 30, prot: 50, lip: 20 },
+];
