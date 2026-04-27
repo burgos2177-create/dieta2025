@@ -18,15 +18,15 @@ export default function Nav({ active, onChange }) {
           </div>
           <span className="font-display text-xl tracking-wider">DIETA 2025</span>
         </div>
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-1 justify-end">
+        <div className="flex-1 overflow-x-auto scrollbar-none [-webkit-overflow-scrolling:touch]">
+          <div className="flex gap-1 py-2 w-max ml-auto pr-1">
             {TABS.map((t) => {
               const isActive = active === t.id;
               return (
                 <button
                   key={t.id}
                   onClick={() => onChange(t.id)}
-                  className={`px-3 py-2 text-sm font-medium rounded-md whitespace-nowrap transition ${
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition ${
                     isActive
                       ? 'bg-accent/15 text-accent border border-accent/30'
                       : 'text-muted hover:text-white hover:bg-white/5 border border-transparent'

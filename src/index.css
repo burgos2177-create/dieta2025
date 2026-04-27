@@ -83,5 +83,9 @@ input[type="range"]::-webkit-slider-thumb {
 ::-webkit-scrollbar-thumb { background: #1e2538; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #2a3350; }
 
+/* Nav scroll sin scrollbar visible */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
+
 /* Utility: layered over noise */
 #root { position: relative; z-index: 1; }
