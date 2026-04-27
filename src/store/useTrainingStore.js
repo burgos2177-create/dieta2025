@@ -1,13 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { SEED_TRAINING } from '../lib/constants';
+import { SEED_TRAINING, SEED_LIBRARY } from '../lib/constants';
 
 const cloneSeed = () => JSON.parse(JSON.stringify(SEED_TRAINING));
 
-const cloneLibrary = () =>
-  SEED_TRAINING.flatMap((day) =>
-    day.exercises.map((ex) => ({ id: ex.id, name: ex.name, tech: ex.tech || '', muscle: ex.muscle }))
-  );
+const cloneLibrary = () => JSON.parse(JSON.stringify(SEED_LIBRARY));
 
 export const useTrainingStore = create(
   persist(
