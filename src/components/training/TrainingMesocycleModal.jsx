@@ -7,6 +7,7 @@ export default function TrainingMesocycleModal({
   open, onClose,
   mesocycles, activeId, currentWeek,
   onCreate, onUpdate, onRemove, onSetActive, onResetStart,
+  onEditRoutines,
 }) {
   const [editingId, setEditingId] = useState(activeId || null);
 
@@ -75,6 +76,7 @@ export default function TrainingMesocycleModal({
                 onResetStart(editing.id, currentWeek);
               }
             }}
+            onEditRoutines={() => onEditRoutines?.(editing.id)}
           />
         )}
 
@@ -91,7 +93,7 @@ export default function TrainingMesocycleModal({
   );
 }
 
-function Editor({ meso, isActive, currentWeek, onUpdate, onRemove, onSetActive, onClearActive, onResetStart }) {
+function Editor({ meso, isActive, currentWeek, onUpdate, onRemove, onSetActive, onClearActive, onResetStart, onEditRoutines }) {
   const endWeek = mesoEndWeek(meso);
   return (
     <div className="space-y-4 border border-border rounded-lg p-4 bg-white/[0.02]">
@@ -153,6 +155,13 @@ function Editor({ meso, isActive, currentWeek, onUpdate, onRemove, onSetActive, 
             Desactivar
           </button>
         )}
+        <button
+          onClick={onEditRoutines}
+          className="px-3 py-1.5 text-xs rounded-md border border-accent/40 text-accent hover:bg-accent/10 font-semibold"
+          title="Editar la matriz de ejercicios × semanas"
+        >
+          ✏️ Editar rutinas
+        </button>
         <button
           onClick={onResetStart}
           className="px-3 py-1.5 text-xs rounded-md border border-border text-muted hover:text-white"

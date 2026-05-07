@@ -31,18 +31,42 @@ function migrateLegacy(state) {
   }
 }
 
-/** Resolve a training day for (weekKey, weekday): snapshot wins, else template. */
+/** Resolve a training day for (weekKey, weekday):
+ *  1. Snapshot (manual edit) wins.
+ *  2. Active mesocycle's routine for this (weekday, week-in-meso) if defined.
+ *  3. Static template fallback. */
 export function selectTrainingDay(state, weekKey, weekday) {
   const snap = state.weeks?.[weekKey]?.[weekday];
   if (snap) return snap;
+  const info = getMesoInfoForWeek(state.mesocycles, state.activeMesocycleId, weekKey);
+  if (info?.meso?.routines?.[weekday]?.exercises?.length > 0) {
+    const exs = info.meso.routines[weekday].exercises;
+    const weekIdx = info.weekNumber - 1;
+    const exercises = exs.map((ex) => {
+      const wk = ex.weeks?.[weekIdx] || ex.weeks?.[0] || {};
+      return {
+        id: ex.id,
+        name: ex.name,
+        tech: ex.tech || '',
+        muscle: ex.muscle,
+        equipment: ex.equipment || 'manual',
+        equipmentData: wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 },
+        reps: Number(wk.reps) || 0,
+        sets: Number(wk.sets) || 0,
+        weight: Number(wk.weight) || 0,
+      };
+    });
+    return { exercises };
+  }
   return state.template?.[weekday] || null;
 }
 
-/** Returns array of {weekday, day, isSnapshot} for all training days in the week. */
+/** Returns array of {weekday, day, isSnapshot} for all training days in the week.
+ *  Uses selectTrainingDay so it honors mesocycle.routines when active. */
 export function selectTrainingDaysForWeek(state, weekKey) {
   return TR_DAYS_CONFIG.map((cfg) => {
     const snap = state.weeks?.[weekKey]?.[cfg.weekday];
-    const day = snap || state.template?.[cfg.weekday];
+    const day = selectTrainingDay(state, weekKey, cfg.weekday);
     return { weekday: cfg.weekday, cfg, day, isSnapshot: !!snap };
   }).filter((x) => x.day);
 }
@@ -335,6 +359,128 @@ export const useTrainingStore = create(
           mesocycles: s.mesocycles.map((m) =>
             m.id === id ? { ...m, startWeek: newStartWeek || s.activeWeek } : m
           ),
+        })),
+
+      // ── Mesocycle routines (per-day, per-week exercise matrix) ──
+      addMesoRoutineExercise: (mesoId, weekday, exercise) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => {
+            if (m.id !== mesoId) return m;
+            const routines = { ...(m.routines || {}) };
+            const day = routines[weekday] ? { ...routines[weekday] } : { exercises: [] };
+            day.exercises = [...(day.exercises || []), exercise];
+            routines[weekday] = day;
+            return { ...m, routines };
+          }),
+        })),
+      removeMesoRoutineExercise: (mesoId, weekday, exIdx) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => {
+            if (m.id !== mesoId) return m;
+            const routines = { ...(m.routines || {}) };
+            const day = routines[weekday];
+            if (!day) return m;
+            const exercises = (day.exercises || []).filter((_, i) => i !== exIdx);
+            routines[weekday] = { ...day, exercises };
+            return { ...m, routines };
+          }),
+        })),
+      updateMesoRoutineExercise: (mesoId, weekday, exIdx, patch) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => {
+            if (m.id !== mesoId) return m;
+            const routines = { ...(m.routines || {}) };
+            const day = routines[weekday];
+            if (!day) return m;
+            const exercises = (day.exercises || []).map((e, i) =>
+              i === exIdx ? { ...e, ...patch } : e
+            );
+            routines[weekday] = { ...day, exercises };
+            return { ...m, routines };
+          }),
+        })),
+      updateMesoRoutineWeek: (mesoId, weekday, exIdx, weekIdx, patch) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => {
+            if (m.id !== mesoId) return m;
+            const routines = { ...(m.routines || {}) };
+            const day = routines[weekday];
+            if (!day) return m;
+            const exercises = (day.exercises || []).map((e, i) => {
+              if (i !== exIdx) return e;
+              const weeks = [...(e.weeks || [])];
+              weeks[weekIdx] = { ...(weeks[weekIdx] || {}), ...patch };
+              return { ...e, weeks };
+            });
+            routines[weekday] = { ...day, exercises };
+            return { ...m, routines };
+          }),
+        })),
+      moveMesoRoutineExercise: (mesoId, weekday, fromIdx, toIdx) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => {
+            if (m.id !== mesoId) return m;
+            const routines = { ...(m.routines || {}) };
+            const day = routines[weekday];
+            if (!day) return m;
+            const exercises = [...(day.exercises || [])];
+            if (toIdx < 0 || toIdx >= exercises.length) return m;
+            const [moved] = exercises.splice(fromIdx, 1);
+            exercises.splice(toIdx, 0, moved);
+            routines[weekday] = { ...day, exercises };
+            return { ...m, routines };
+          }),
+        })),
+      /** Initialize the routine for (mesoId, weekday) by copying from the
+       *  static template — same exercises in all N weeks of the mesocycle. */
+      importMesoRoutineFromTemplate: (mesoId, weekday) =>
+        set((s) => {
+          const tmpl = s.template?.[weekday];
+          if (!tmpl?.exercises?.length) return {};
+          const meso = s.mesocycles.find((m) => m.id === mesoId);
+          if (!meso) return {};
+          const N = meso.weeks || 5;
+          const exercises = tmpl.exercises.map((e) => ({
+            id: e.id,
+            name: e.name,
+            tech: e.tech || '',
+            muscle: e.muscle,
+            equipment: e.equipment || 'manual',
+            weeks: Array.from({ length: N }, () => ({
+              reps: Number(e.reps) || 0,
+              sets: Number(e.sets) || 0,
+              weight: Number(e.weight) || 0,
+              equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
+            })),
+          }));
+          return {
+            mesocycles: s.mesocycles.map((m) =>
+              m.id !== mesoId
+                ? m
+                : { ...m, routines: { ...(m.routines || {}), [weekday]: { exercises } } }
+            ),
+          };
+        }),
+      /** Copy week N values to all subsequent weeks (useful starting point). */
+      fillMesoRoutineWeeksFrom: (mesoId, weekday, fromWeekIdx) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => {
+            if (m.id !== mesoId) return m;
+            const day = m.routines?.[weekday];
+            if (!day?.exercises?.length) return m;
+            const exercises = day.exercises.map((e) => {
+              const src = e.weeks?.[fromWeekIdx];
+              if (!src) return e;
+              const weeks = e.weeks.map((w, idx) =>
+                idx > fromWeekIdx ? { ...src, equipmentData: { ...(src.equipmentData || {}) } } : w
+              );
+              return { ...e, weeks };
+            });
+            return {
+              ...m,
+              routines: { ...(m.routines || {}), [weekday]: { ...day, exercises } },
+            };
+          }),
         })),
 
       resetSeed: () => set({ template: buildSeedTemplate(), weeks: {}, log: {}, library: cloneLibrary() }),

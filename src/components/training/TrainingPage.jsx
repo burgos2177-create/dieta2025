@@ -3,6 +3,7 @@ import VolumeDashboard from './VolumeDashboard.jsx';
 import WorkoutDayCard from './WorkoutDayCard.jsx';
 import AddExerciseModal from './AddExerciseModal.jsx';
 import TrainingMesocycleModal from './TrainingMesocycleModal.jsx';
+import MesocycleRoutinesEditor from './MesocycleRoutinesEditor.jsx';
 import SaveWorkoutPresetModal from './SaveWorkoutPresetModal.jsx';
 import ApplyWorkoutPresetModal from './ApplyWorkoutPresetModal.jsx';
 import WorkoutPresetsManagerModal from './WorkoutPresetsManagerModal.jsx';
@@ -25,6 +26,9 @@ export default function TrainingPage() {
     addExercise, updateExercise, updateExerciseFields,
     resetDayToTemplate, saveDayAsTemplate,
     addMesocycle, updateMesocycle, removeMesocycle, setActiveMesocycleId, resetMesoStart,
+    addMesoRoutineExercise, removeMesoRoutineExercise, updateMesoRoutineExercise,
+    updateMesoRoutineWeek, moveMesoRoutineExercise, importMesoRoutineFromTemplate,
+    fillMesoRoutineWeeksFrom,
     saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset, overwriteWorkoutPreset, duplicateWorkoutPreset,
   } = useTrainingStore();
 
@@ -38,6 +42,7 @@ export default function TrainingPage() {
   const [editing, setEditing] = useState(null);
   const [logEx, setLogEx] = useState(null);
   const [mesoOpen, setMesoOpen] = useState(false);
+  const [editingRoutinesId, setEditingRoutinesId] = useState(null);
   const [savePresetFor, setSavePresetFor] = useState(null);  // {weekday, label, exercises}
   const [applyPresetFor, setApplyPresetFor] = useState(null); // {weekday, label}
   const [presetsOpen, setPresetsOpen] = useState(false);
@@ -273,6 +278,21 @@ export default function TrainingPage() {
         onRemove={(id) => { removeMesocycle(id); showToast('Mesociclo eliminado'); }}
         onSetActive={(id) => { setActiveMesocycleId(id); showToast(id ? 'Mesociclo activado' : 'Mesociclo desactivado', 'ok'); }}
         onResetStart={(id, wk) => { resetMesoStart(id, wk); showToast('Inicio reseteado a esta semana', 'ok'); }}
+        onEditRoutines={(id) => { setMesoOpen(false); setEditingRoutinesId(id); }}
+      />
+
+      <MesocycleRoutinesEditor
+        open={!!editingRoutinesId}
+        onClose={() => setEditingRoutinesId(null)}
+        meso={mesocycles.find((m) => m.id === editingRoutinesId)}
+        hasTemplateForWeekday={(wd) => (template?.[wd]?.exercises?.length || 0) > 0}
+        onAddExercise={(wd, ex) => addMesoRoutineExercise(editingRoutinesId, wd, ex)}
+        onRemoveExercise={(wd, idx) => removeMesoRoutineExercise(editingRoutinesId, wd, idx)}
+        onUpdateExercise={(wd, idx, patch) => updateMesoRoutineExercise(editingRoutinesId, wd, idx, patch)}
+        onUpdateWeek={(wd, exIdx, weekIdx, patch) => updateMesoRoutineWeek(editingRoutinesId, wd, exIdx, weekIdx, patch)}
+        onMoveExercise={(wd, fromIdx, toIdx) => moveMesoRoutineExercise(editingRoutinesId, wd, fromIdx, toIdx)}
+        onImportFromTemplate={(wd) => importMesoRoutineFromTemplate(editingRoutinesId, wd)}
+        onFillFromWeek={(wd, fromWeekIdx) => fillMesoRoutineWeeksFrom(editingRoutinesId, wd, fromWeekIdx)}
       />
     </div>
   );
