@@ -208,8 +208,15 @@ export const useTrainingStore = create(
             id: `wp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
             name: (name || '').trim() || 'Preset',
             exercises: (exercises || []).map((e) => ({
-              id: e.id, name: e.name, tech: e.tech || '', muscle: e.muscle,
-              reps: Number(e.reps) || 0, sets: Number(e.sets) || 0, weight: Number(e.weight) || 0,
+              id: e.id,
+              name: e.name,
+              tech: e.tech || '',
+              muscle: e.muscle,
+              reps: Number(e.reps) || 0,
+              sets: Number(e.sets) || 0,
+              weight: Number(e.weight) || 0,
+              equipment: e.equipment || 'manual',
+              equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
             })),
             createdAt: Date.now(),
           };
