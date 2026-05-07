@@ -224,7 +224,7 @@ export const useTrainingStore = create(
         set((s) => ({ log: { ...s.log, [exId]: [] } })),
 
       // ── Workout presets ──
-      saveWorkoutPreset: ({ name, exercises }) =>
+      saveWorkoutPreset: ({ name, exercises, gym, mesoWeek, bodyWeightKg }) =>
         set((s) => {
           const preset = {
             id: `wp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
@@ -240,13 +240,16 @@ export const useTrainingStore = create(
               equipment: e.equipment || 'manual',
               equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
             })),
+            gym: (gym || '').trim(),
+            mesoWeek: mesoWeek == null ? null : Number(mesoWeek),
+            bodyWeightKg: bodyWeightKg == null ? null : Number(bodyWeightKg),
             createdAt: Date.now(),
           };
           return { workoutPresets: [...s.workoutPresets, preset] };
         }),
       removeWorkoutPreset: (id) =>
         set((s) => ({ workoutPresets: s.workoutPresets.filter((p) => p.id !== id) })),
-      overwriteWorkoutPreset: (id, { name, exercises }) =>
+      overwriteWorkoutPreset: (id, { name, exercises, gym, mesoWeek, bodyWeightKg }) =>
         set((s) => ({
           workoutPresets: s.workoutPresets.map((p) =>
             p.id !== id ? p : {
@@ -263,6 +266,13 @@ export const useTrainingStore = create(
                 equipment: e.equipment || 'manual',
                 equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
               })),
+              gym: gym !== undefined ? (gym || '').trim() : p.gym,
+              mesoWeek: mesoWeek !== undefined
+                ? (mesoWeek == null ? null : Number(mesoWeek))
+                : p.mesoWeek,
+              bodyWeightKg: bodyWeightKg !== undefined
+                ? (bodyWeightKg == null ? null : Number(bodyWeightKg))
+                : p.bodyWeightKg,
               updatedAt: Date.now(),
             }
           ),

@@ -30,6 +30,8 @@ export default function TrainingPage() {
 
   const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
   const profile = useProfileStore();
+  const currentGym = useUIStore((s) => s.currentGym);
+  const setCurrentGym = useUIStore((s) => s.setCurrentGym);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalWeekday, setModalWeekday] = useState(0);
@@ -217,12 +219,18 @@ export default function TrainingPage() {
         matchingPresetId={
           findMatchingWorkoutPreset(workoutPresets, savePresetFor?.exercises || [])?.id || null
         }
-        onSubmit={({ name, exercises }) => {
-          saveWorkoutPreset({ name, exercises });
+        defaultGym={currentGym}
+        defaultMesoWeek={mesoInfo?.weekNumber || null}
+        defaultMesoWeeks={mesoInfo?.meso?.weeks || 5}
+        defaultBodyWeightKg={Number(profile.peso) || null}
+        onSubmit={(payload) => {
+          saveWorkoutPreset(payload);
+          if (payload.gym) setCurrentGym(payload.gym);
           showToast('Preset de rutina guardado', 'ok');
         }}
-        onOverwrite={(id, { name, exercises }) => {
-          overwriteWorkoutPreset(id, { name, exercises });
+        onOverwrite={(id, payload) => {
+          overwriteWorkoutPreset(id, payload);
+          if (payload.gym) setCurrentGym(payload.gym);
           showToast('Preset sobrescrito', 'ok');
         }}
       />
@@ -232,6 +240,8 @@ export default function TrainingPage() {
         onClose={() => setApplyPresetFor(null)}
         presets={workoutPresets}
         dayLabel={applyPresetFor?.label}
+        defaultGym={currentGym}
+        defaultMesoWeek={mesoInfo?.weekNumber || null}
         onApply={(presetId, mode) => {
           applyWorkoutPreset(applyPresetFor.weekday, presetId, mode);
           showToast(mode === 'replace' ? 'Preset aplicado (reemplazado)' : 'Preset aplicado', 'ok');
@@ -244,6 +254,7 @@ export default function TrainingPage() {
         presets={workoutPresets}
         onRename={(id, name) => { renameWorkoutPreset(id, name); showToast('Preset renombrado'); }}
         onRemove={(id) => { removeWorkoutPreset(id); showToast('Preset eliminado'); }}
+        onUpdate={(id, patch) => overwriteWorkoutPreset(id, patch)}
       />
 
       <TrainingMesocycleModal

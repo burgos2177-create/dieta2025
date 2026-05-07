@@ -7,6 +7,9 @@ export const useUIStore = create(
       syncWeek: false,  // when true, nutrition + training share activeWeek
       setSyncWeek: (v) => set({ syncWeek: !!v }),
       toggleSyncWeek: () => set((s) => ({ syncWeek: !s.syncWeek })),
+      // Default gym for saving / filtering workout presets
+      currentGym: '',
+      setCurrentGym: (g) => set({ currentGym: (g || '').trim() }),
     }),
     { name: 'dieta2025_ui' }
   )
