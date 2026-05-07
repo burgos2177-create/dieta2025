@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import Modal from '../ui/Modal.jsx';
 
-export default function WorkoutPresetsManagerModal({ open, onClose, presets, onRename, onRemove, onUpdate }) {
+export default function WorkoutPresetsManagerModal({ open, onClose, presets, onRename, onRemove, onUpdate, onDuplicate, defaultMesoWeeks = 5 }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ name: '', gym: '', mesoWeek: '', bodyWeightKg: '' });
+  const [duplicatingId, setDuplicatingId] = useState(null);
+  const [dupDraft, setDupDraft] = useState({ name: '', mesoWeek: '' });
   const [filterGym, setFilterGym] = useState('');
   const [filterWeek, setFilterWeek] = useState('');
 
@@ -46,6 +48,23 @@ export default function WorkoutPresetsManagerModal({ open, onClose, presets, onR
       bodyWeightKg: draft.bodyWeightKg === '' ? null : Number(draft.bodyWeightKg),
     });
     cancelEdit();
+  };
+
+  const startDuplicate = (p) => {
+    setDuplicatingId(p.id);
+    const nextWeek = p.mesoWeek != null ? p.mesoWeek + 1 : 1;
+    // Strip a trailing " S<n>" from name if present, then append the new one
+    const baseName = p.name.replace(/\s*S\d+\s*$/i, '').trim();
+    setDupDraft({ name: `${baseName} S${nextWeek}`, mesoWeek: String(nextWeek) });
+  };
+  const cancelDuplicate = () => { setDuplicatingId(null); setDupDraft({ name: '', mesoWeek: '' }); };
+  const commitDuplicate = () => {
+    if (!duplicatingId) return;
+    onDuplicate(duplicatingId, {
+      name: dupDraft.name.trim(),
+      mesoWeek: dupDraft.mesoWeek === '' ? null : Number(dupDraft.mesoWeek),
+    });
+    cancelDuplicate();
   };
 
   return (
@@ -136,6 +155,42 @@ export default function WorkoutPresetsManagerModal({ open, onClose, presets, onR
                         <button onClick={commit} className="px-2 py-1 text-xs rounded bg-accent text-black font-semibold">Guardar</button>
                       </div>
                     </div>
+                  ) : duplicatingId === p.id ? (
+                    <div className="space-y-2">
+                      <div className="text-[0.65rem] text-muted">
+                        Duplicar <span className="text-white">{p.name}</span> manteniendo ejercicios, gym y peso corporal.
+                      </div>
+                      <div className="grid grid-cols-12 gap-2">
+                        <input
+                          type="text"
+                          value={dupDraft.name}
+                          onChange={(e) => setDupDraft((s) => ({ ...s, name: e.target.value }))}
+                          className="col-span-8 !py-1 !px-2 text-sm"
+                          placeholder="Nombre del preset copiado"
+                          autoFocus
+                        />
+                        <select
+                          value={dupDraft.mesoWeek}
+                          onChange={(e) => setDupDraft((s) => ({ ...s, mesoWeek: e.target.value }))}
+                          className="col-span-4 !py-1 !px-2 text-xs"
+                        >
+                          <option value="">Sin semana</option>
+                          {Array.from({ length: defaultMesoWeeks }, (_, i) => (
+                            <option key={i + 1} value={i + 1}>Semana {i + 1}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <button onClick={cancelDuplicate} className="px-2 py-1 text-xs rounded border border-border text-muted">Cancelar</button>
+                        <button
+                          onClick={commitDuplicate}
+                          disabled={!dupDraft.name.trim()}
+                          className="px-2 py-1 text-xs rounded bg-accent text-black font-semibold disabled:opacity-40"
+                        >
+                          Crear copia
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
@@ -148,6 +203,7 @@ export default function WorkoutPresetsManagerModal({ open, onClose, presets, onR
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => startDuplicate(p)} className="text-muted hover:text-accent px-2 py-1" title="Copiar a otra semana">📋</button>
                         <button onClick={() => startEdit(p)} className="text-muted hover:text-accent px-2 py-1" title="Editar">✎</button>
                         <button
                           onClick={() => { if (confirm(`¿Eliminar preset "${p.name}"?`)) onRemove(p.id); }}

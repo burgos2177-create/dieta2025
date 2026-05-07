@@ -249,6 +249,27 @@ export const useTrainingStore = create(
         }),
       removeWorkoutPreset: (id) =>
         set((s) => ({ workoutPresets: s.workoutPresets.filter((p) => p.id !== id) })),
+      /** Clone a preset and apply overrides (e.g. {mesoWeek: 2, name: 'Pierna S2'}). */
+      duplicateWorkoutPreset: (id, overrides = {}) =>
+        set((s) => {
+          const src = s.workoutPresets.find((p) => p.id === id);
+          if (!src) return {};
+          const copy = {
+            ...src,
+            id: `wp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+            name: (overrides.name ?? src.name).trim() || src.name,
+            exercises: src.exercises.map((e) => ({
+              ...e,
+              equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
+            })),
+            gym: overrides.gym !== undefined ? overrides.gym : src.gym,
+            mesoWeek: overrides.mesoWeek !== undefined ? overrides.mesoWeek : src.mesoWeek,
+            bodyWeightKg: overrides.bodyWeightKg !== undefined ? overrides.bodyWeightKg : src.bodyWeightKg,
+            createdAt: Date.now(),
+          };
+          delete copy.updatedAt;
+          return { workoutPresets: [...s.workoutPresets, copy] };
+        }),
       overwriteWorkoutPreset: (id, { name, exercises, gym, mesoWeek, bodyWeightKg }) =>
         set((s) => ({
           workoutPresets: s.workoutPresets.map((p) =>

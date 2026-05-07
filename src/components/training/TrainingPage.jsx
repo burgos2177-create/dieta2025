@@ -25,7 +25,7 @@ export default function TrainingPage() {
     addExercise, updateExercise, updateExerciseFields,
     resetDayToTemplate, saveDayAsTemplate,
     addMesocycle, updateMesocycle, removeMesocycle, setActiveMesocycleId, resetMesoStart,
-    saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset, overwriteWorkoutPreset,
+    saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset, overwriteWorkoutPreset, duplicateWorkoutPreset,
   } = useTrainingStore();
 
   const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
@@ -252,9 +252,14 @@ export default function TrainingPage() {
         open={presetsOpen}
         onClose={() => setPresetsOpen(false)}
         presets={workoutPresets}
+        defaultMesoWeeks={mesoInfo?.meso?.weeks || 5}
         onRename={(id, name) => { renameWorkoutPreset(id, name); showToast('Preset renombrado'); }}
         onRemove={(id) => { removeWorkoutPreset(id); showToast('Preset eliminado'); }}
         onUpdate={(id, patch) => overwriteWorkoutPreset(id, patch)}
+        onDuplicate={(id, overrides) => {
+          duplicateWorkoutPreset(id, overrides);
+          showToast('Preset duplicado', 'ok');
+        }}
       />
 
       <TrainingMesocycleModal
