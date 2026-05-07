@@ -89,15 +89,15 @@ export function isDaySnapshot(state, weekKey, dayIdx) {
   return !!state.weeks?.[weekKey]?.[dayIdx];
 }
 
-/** Mutate a day in-place: ensures a snapshot exists (cloning template) before mutation. */
+/** Mutate a day in-place: ensures a snapshot exists by cloning the *currently shown* plan
+ *  (snapshot > mesocycle-materialized > template) before mutation. */
 function mutateDay(state, weekKey, dayIdx, mutator) {
   const weeks = { ...(state.weeks || {}) };
   const week = { ...(weeks[weekKey] || {}) };
-  const existing = week[dayIdx];
-  // Clone template if no snapshot yet
-  const day = existing
-    ? { ...existing, ...Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, [...v]])) }
-    : cloneDayPlan(state.template?.[dayIdx] || {});
+  // Use the resolved view as base — guarantees that editing a day that was
+  // showing mesocycle content won't wipe it out.
+  const baseDay = week[dayIdx] || selectDayPlan(state, weekKey, dayIdx);
+  const day = cloneDayPlan(baseDay);
   // Ensure all meal slots exist
   for (const m of state.meals || []) {
     if (!day[m.id]) day[m.id] = [];
