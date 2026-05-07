@@ -104,10 +104,11 @@ export const EQUIPMENT_TYPES = [
   },
   {
     id: 'bodyweight',
-    label: 'Peso corporal (+ extra kg opcional)',
+    label: 'Peso corporal (peso del perfil + extra kg opcional)',
     short: 'Corporal',
-    inputs: [{ key: 'extraKg', label: '+ extra kg', unit: 'kg', step: 0.5 }],
-    compute: (d) => Number(d.extraKg) || 0,
+    inputs: [{ key: 'extraKg', label: '+/- extra kg', unit: 'kg', step: 0.5 }],
+    needsBodyweight: true,
+    compute: (d, ctx) => (Number(ctx?.bodyweight) || 0) + (Number(d.extraKg) || 0),
   },
 ];
 
@@ -117,14 +118,15 @@ export function getEquipment(id) {
   return EQUIPMENT_BY_ID[id] || EQUIPMENT_BY_ID.manual;
 }
 
-export function computeWeightKg(equipmentId, equipmentData) {
+export function computeWeightKg(equipmentId, equipmentData, ctx) {
   const eq = getEquipment(equipmentId);
-  return round2(eq.compute(equipmentData || {}));
+  return round2(eq.compute(equipmentData || {}, ctx || {}));
 }
 
 /** Build sensible defaults for the inputs of an equipment type, optionally
- *  trying to preserve the current canonical kg (only when feasible). */
-export function defaultEquipmentData(equipmentId, currentKg = 0) {
+ *  trying to preserve the current canonical kg (only when feasible).
+ *  `ctx.bodyweight` is needed to back-compute extraKg for bodyweight equipment. */
+export function defaultEquipmentData(equipmentId, currentKg = 0, ctx) {
   const eq = getEquipment(equipmentId);
   const data = {};
   for (const input of eq.inputs) {
@@ -169,9 +171,12 @@ export function defaultEquipmentData(equipmentId, currentKg = 0) {
       data.lb = round2(currentKg / LB_TO_KG);
       data.multiplier = 1;
       break;
-    case 'bodyweight':
-      data.extraKg = currentKg;
+    case 'bodyweight': {
+      // When switching to bodyweight, default to using just the profile weight
+      // (extra = 0). The user can later add or subtract for weighted/assisted variants.
+      data.extraKg = 0;
       break;
+    }
   }
   return data;
 }

@@ -1,6 +1,7 @@
 import {
   EQUIPMENT_TYPES, getEquipment, computeWeightKg, defaultEquipmentData,
 } from '../../lib/equipment.js';
+import { useProfileStore } from '../../store/useProfileStore.js';
 
 /**
  * Compact column-friendly editor for an exercise's weight.
@@ -13,13 +14,15 @@ export default function EquipmentWeightInput({ value, onChange, compact = true }
   const equipmentId = value?.equipment || 'manual';
   const eq = getEquipment(equipmentId);
   const data = value?.equipmentData || {};
+  const profileWeight = useProfileStore((s) => Number(s.peso) || 0);
+  const ctx = { bodyweight: profileWeight };
 
   const switchEquipment = (newId) => {
-    const newData = defaultEquipmentData(newId, value?.weight || 0);
+    const newData = defaultEquipmentData(newId, value?.weight || 0, ctx);
     onChange({
       equipment: newId,
       equipmentData: newData,
-      weight: computeWeightKg(newId, newData),
+      weight: computeWeightKg(newId, newData, ctx),
     });
   };
 
@@ -29,7 +32,7 @@ export default function EquipmentWeightInput({ value, onChange, compact = true }
     onChange({
       equipment: equipmentId,
       equipmentData: newData,
-      weight: computeWeightKg(equipmentId, newData),
+      weight: computeWeightKg(equipmentId, newData, ctx),
     });
   };
 
@@ -81,6 +84,11 @@ export default function EquipmentWeightInput({ value, onChange, compact = true }
 
       <div className="text-[0.6rem] text-accent/80 font-mono whitespace-nowrap">
         = {(value?.weight ?? 0).toFixed(2)} kg
+        {eq.needsBodyweight && profileWeight > 0 && (
+          <span className="text-muted/70 ml-1">
+            (corp. {profileWeight}{(data.extraKg || 0) !== 0 ? ` ${data.extraKg > 0 ? '+' : ''}${data.extraKg}` : ''})
+          </span>
+        )}
       </div>
     </div>
   );
