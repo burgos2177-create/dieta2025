@@ -4,6 +4,7 @@ const TABS = [
   { id: 'foods',       label: 'Alimentos' },
   { id: 'training',    label: 'Entreno' },
   { id: 'progression', label: 'Bitácora' },
+  { id: 'supplements', label: 'Supl.' },
   { id: 'profile',     label: 'Perfil' },
   { id: 'tools',       label: 'Herramientas' },
 ];

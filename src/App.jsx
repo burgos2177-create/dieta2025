@@ -7,11 +7,13 @@ import TrainingPage from './components/training/TrainingPage.jsx';
 import ProgressionPage from './components/progression/ProgressionPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import ToolsPage from './pages/ToolsPage.jsx';
+import SupplementsPage from './components/supplements/SupplementsPage.jsx';
 import { useTrainingStore } from './store/useTrainingStore.js';
 import { useNutritionStore } from './store/useNutritionStore.js';
 import { useProfileStore } from './store/useProfileStore.js';
 import { useBodyLogStore } from './store/useBodyLogStore.js';
 import { useFoodStore } from './store/useFoodStore.js';
+import { useSupplementStore } from './store/useSupplementStore.js';
 
 export default function App() {
   const [tab, setTab] = useState('dashboard');
@@ -22,6 +24,7 @@ export default function App() {
     useProfileStore.getState()._initCloud();
     useBodyLogStore.getState()._initCloud();
     useFoodStore.getState()._initCloud();
+    useSupplementStore.getState()._initCloud();
   }, []);
 
   const render = () => {
@@ -31,6 +34,7 @@ export default function App() {
       case 'foods':       return <FoodsPage />;
       case 'training':    return <TrainingPage />;
       case 'progression': return <ProgressionPage />;
+      case 'supplements': return <SupplementsPage />;
       case 'profile':     return <ProfilePage />;
       case 'tools':       return <ToolsPage />;
       default:            return <Dashboard />;
