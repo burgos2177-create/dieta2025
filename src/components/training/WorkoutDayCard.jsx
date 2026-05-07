@@ -7,6 +7,7 @@ export default function WorkoutDayCard({
   weekday, cfg, day, isSnapshot,
   onEditExercise, onOpenLog, onAddExercise,
   onResetDay, onSaveAsTemplate,
+  onApplyPreset, onSavePreset,
 }) {
   const [open, setOpen] = useState(true);
   const totalVol = (day?.exercises || []).reduce(
@@ -97,12 +98,25 @@ export default function WorkoutDayCard({
               ))}
             </tbody>
           </table>
-          <div className="p-3 border-t border-border">
+          <div className="p-3 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button
               onClick={() => onAddExercise?.(weekday)}
-              className="w-full border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
+              className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
             >
               ＋ Agregar ejercicio
+            </button>
+            <button
+              onClick={() => onApplyPreset?.(weekday, cfg.label)}
+              className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
+            >
+              📋 Aplicar preset
+            </button>
+            <button
+              onClick={() => onSavePreset?.(weekday, cfg.label, day?.exercises || [])}
+              disabled={!day?.exercises?.length}
+              className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted disabled:hover:border-border"
+            >
+              💾 Guardar preset
             </button>
           </div>
         </div>

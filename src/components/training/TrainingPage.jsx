@@ -3,28 +3,42 @@ import VolumeDashboard from './VolumeDashboard.jsx';
 import WorkoutDayCard from './WorkoutDayCard.jsx';
 import AddExerciseModal from './AddExerciseModal.jsx';
 import TrainingMesocycleModal from './TrainingMesocycleModal.jsx';
+import SaveWorkoutPresetModal from './SaveWorkoutPresetModal.jsx';
+import ApplyWorkoutPresetModal from './ApplyWorkoutPresetModal.jsx';
+import WorkoutPresetsManagerModal from './WorkoutPresetsManagerModal.jsx';
 import LogDetailModal from '../progression/LogDetailModal.jsx';
 import WeekNavigator from '../nutrition/WeekNavigator.jsx';
-import { useTrainingStore, selectTrainingDaysForWeek } from '../../store/useTrainingStore.js';
+import { useTrainingStore, selectTrainingDaysForWeek, selectTrainingDay } from '../../store/useTrainingStore.js';
+import { useNutritionStore } from '../../store/useNutritionStore.js';
+import { useProfileStore } from '../../store/useProfileStore.js';
+import { useUIStore } from '../../store/useUIStore.js';
 import { getMesoInfoForWeek } from '../../lib/mesocycle.js';
+import { buildMesocyclePrintHTML } from '../../lib/printTraining.js';
+import { TR_DAYS_CONFIG, MUSCLE_LABELS } from '../../lib/constants.js';
 import { showToast } from '../ui/Toast.jsx';
 
 export default function TrainingPage() {
   const {
     template, weeks, mesocycles, activeMesocycleId, activeWeek,
+    workoutPresets,
     setActiveWeek,
     addExercise, updateExercise,
     resetDayToTemplate, saveDayAsTemplate,
     addMesocycle, updateMesocycle, removeMesocycle, setActiveMesocycleId, resetMesoStart,
+    saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset,
   } = useTrainingStore();
 
   const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
+  const profile = useProfileStore();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalWeekday, setModalWeekday] = useState(0);
   const [editing, setEditing] = useState(null);
   const [logEx, setLogEx] = useState(null);
   const [mesoOpen, setMesoOpen] = useState(false);
+  const [savePresetFor, setSavePresetFor] = useState(null);  // {weekday, label, exercises}
+  const [applyPresetFor, setApplyPresetFor] = useState(null); // {weekday, label}
+  const [presetsOpen, setPresetsOpen] = useState(false);
 
   const mesoInfo = useMemo(
     () => getMesoInfoForWeek(mesocycles, activeMesocycleId, activeWeek),
@@ -73,17 +87,55 @@ export default function TrainingPage() {
             )}
           </p>
         </div>
-        <button
-          onClick={() => openAdd(0)}
-          className="px-4 py-2 text-sm rounded-lg bg-accent text-black font-semibold hover:brightness-110"
-        >
-          ＋ Ejercicio
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => openAdd(0)}
+            className="px-4 py-2 text-sm rounded-lg bg-accent text-black font-semibold hover:brightness-110"
+          >
+            ＋ Ejercicio
+          </button>
+          <button
+            onClick={() => {
+              const meso = mesocycles.find((m) => m.id === activeMesocycleId);
+              if (!meso) {
+                showToast('Activa un mesociclo primero', 'error');
+                return;
+              }
+              const state = useTrainingStore.getState();
+              const html = buildMesocyclePrintHTML({
+                profile,
+                meso,
+                trCfgs: TR_DAYS_CONFIG,
+                selectDay: (wk, wd) => selectTrainingDay(state, wk, wd),
+                muscleLabels: MUSCLE_LABELS,
+              });
+              const win = window.open('', '_blank', 'width=820,height=1000');
+              if (!win) {
+                showToast('Permite ventanas emergentes para imprimir', 'error');
+                return;
+              }
+              win.document.open();
+              win.document.write(html);
+              win.document.close();
+              win.focus();
+              setTimeout(() => { try { win.print(); } catch (_) {} }, 350);
+            }}
+            className="px-4 py-2 text-sm rounded-lg border border-border text-muted hover:text-white hover:border-white/30 transition"
+            title="Imprimir el mesociclo activo"
+          >
+            🖨 PDF Mesociclo
+          </button>
+        </div>
       </div>
 
       <WeekNavigator
         activeWeek={activeWeek}
-        onChange={setActiveWeek}
+        onChange={(wk) => {
+          setActiveWeek(wk);
+          if (useUIStore.getState().syncWeek) {
+            useNutritionStore.getState().setActiveWeek(wk);
+          }
+        }}
         snapshotCount={snapshotCount}
         mesoInfo={mesoInfo}
         onOpenMesocycles={() => setMesoOpen(true)}
@@ -121,8 +173,20 @@ export default function TrainingPage() {
                 showToast('Plantilla actualizada', 'ok');
               }
             }}
+            onApplyPreset={(wd, label) => setApplyPresetFor({ weekday: wd, label })}
+            onSavePreset={(wd, label, exercises) => setSavePresetFor({ weekday: wd, label, exercises })}
           />
         ))}
+      </div>
+
+      {/* Footer: presets manager */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button
+          onClick={() => setPresetsOpen(true)}
+          className="flex-1 border border-border bg-white/[0.02] hover:bg-white/[0.05] rounded-lg py-3 text-sm text-white transition"
+        >
+          📋 Gestionar presets de rutina ({workoutPresets.length})
+        </button>
       </div>
 
       <AddExerciseModal
@@ -134,6 +198,36 @@ export default function TrainingPage() {
       />
 
       <LogDetailModal open={!!logEx} onClose={() => setLogEx(null)} exercise={logEx} />
+
+      <SaveWorkoutPresetModal
+        open={!!savePresetFor}
+        onClose={() => setSavePresetFor(null)}
+        exercises={savePresetFor?.exercises}
+        dayLabel={savePresetFor?.label}
+        onSubmit={({ name, exercises }) => {
+          saveWorkoutPreset({ name, exercises });
+          showToast('Preset de rutina guardado', 'ok');
+        }}
+      />
+
+      <ApplyWorkoutPresetModal
+        open={!!applyPresetFor}
+        onClose={() => setApplyPresetFor(null)}
+        presets={workoutPresets}
+        dayLabel={applyPresetFor?.label}
+        onApply={(presetId, mode) => {
+          applyWorkoutPreset(applyPresetFor.weekday, presetId, mode);
+          showToast(mode === 'replace' ? 'Preset aplicado (reemplazado)' : 'Preset aplicado', 'ok');
+        }}
+      />
+
+      <WorkoutPresetsManagerModal
+        open={presetsOpen}
+        onClose={() => setPresetsOpen(false)}
+        presets={workoutPresets}
+        onRename={(id, name) => { renameWorkoutPreset(id, name); showToast('Preset renombrado'); }}
+        onRemove={(id) => { removeWorkoutPreset(id); showToast('Preset eliminado'); }}
+      />
 
       <TrainingMesocycleModal
         open={mesoOpen}

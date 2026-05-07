@@ -1,7 +1,10 @@
 import { addWeeks, formatWeekRange, getMondayKey, isCurrentWeek } from '../../lib/dates';
+import { useUIStore } from '../../store/useUIStore';
 
 export default function WeekNavigator({ activeWeek, onChange, snapshotCount = 0, mesoInfo, onOpenMesocycles }) {
   const isCurrent = isCurrentWeek(activeWeek);
+  const syncWeek = useUIStore((s) => s.syncWeek);
+  const toggleSyncWeek = useUIStore((s) => s.toggleSyncWeek);
   return (
     <div className="flex items-center justify-between gap-2 bg-white/[0.02] border border-border rounded-lg px-3 py-2">
       <button
@@ -40,6 +43,17 @@ export default function WeekNavigator({ activeWeek, onChange, snapshotCount = 0,
       </div>
 
       <div className="flex items-center gap-1">
+        <button
+          onClick={toggleSyncWeek}
+          className={`px-2 py-1.5 text-xs rounded-md border transition ${
+            syncWeek
+              ? 'border-accent bg-accent/10 text-accent'
+              : 'border-border text-muted hover:text-white hover:border-white/20'
+          }`}
+          title={syncWeek ? 'Sincronización activa: nutrición y entreno comparten semana' : 'Sincronizar semana entre nutrición y entreno'}
+        >
+          🔗
+        </button>
         {onOpenMesocycles && (
           <button
             onClick={onOpenMesocycles}

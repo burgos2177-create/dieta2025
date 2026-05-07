@@ -10,6 +10,8 @@ import ApplyPresetModal from './ApplyPresetModal.jsx';
 import PresetsManagerModal from './PresetsManagerModal.jsx';
 import MesocycleModal from './MesocycleModal.jsx';
 import { useNutritionStore, selectDayPlan, isDaySnapshot } from '../../store/useNutritionStore.js';
+import { useTrainingStore } from '../../store/useTrainingStore.js';
+import { useUIStore } from '../../store/useUIStore.js';
 import { getMesoInfoForWeek } from '../../lib/mesocycle.js';
 import { useFoodStore } from '../../store/useFoodStore.js';
 import { useProfileStore } from '../../store/useProfileStore.js';
@@ -135,7 +137,12 @@ export default function NutritionPage() {
 
       <WeekNavigator
         activeWeek={activeWeek}
-        onChange={setActiveWeek}
+        onChange={(wk) => {
+          setActiveWeek(wk);
+          if (useUIStore.getState().syncWeek) {
+            useTrainingStore.getState().setActiveWeek(wk);
+          }
+        }}
         snapshotCount={snapshotDays.length}
         mesoInfo={mesoInfo}
         onOpenMesocycles={() => setMesoOpen(true)}

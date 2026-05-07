@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import LogList from './LogList.jsx';
 import WeeklyVolumeTable from './WeeklyVolumeTable.jsx';
+import MesocycleProgress from './MesocycleProgress.jsx';
 
 const TABS = [
   { id: 'log',    label: 'Bitácora' },
   { id: 'volume', label: 'Volumen semanal' },
+  { id: 'meso',   label: 'Mesociclo' },
 ];
 
 export default function ProgressionPage() {
@@ -34,6 +36,7 @@ export default function ProgressionPage() {
 
       {tab === 'log' && <LogList />}
       {tab === 'volume' && <WeeklyVolumeTable />}
+      {tab === 'meso' && <MesocycleProgress />}
     </div>
   );
 }

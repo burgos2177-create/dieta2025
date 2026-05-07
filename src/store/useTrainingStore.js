@@ -72,6 +72,7 @@ export const useTrainingStore = create(
       weeks: {},
       log: {},
       library: cloneLibrary(),
+      workoutPresets: [],
       mesocycles: [],
       activeMesocycleId: null,
       activeWeek: getMondayKey(new Date()),
@@ -177,6 +178,38 @@ export const useTrainingStore = create(
       clearLog: (exId) =>
         set((s) => ({ log: { ...s.log, [exId]: [] } })),
 
+      // ── Workout presets ──
+      saveWorkoutPreset: ({ name, exercises }) =>
+        set((s) => {
+          const preset = {
+            id: `wp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+            name: (name || '').trim() || 'Preset',
+            exercises: (exercises || []).map((e) => ({
+              id: e.id, name: e.name, tech: e.tech || '', muscle: e.muscle,
+              reps: Number(e.reps) || 0, sets: Number(e.sets) || 0, weight: Number(e.weight) || 0,
+            })),
+            createdAt: Date.now(),
+          };
+          return { workoutPresets: [...s.workoutPresets, preset] };
+        }),
+      removeWorkoutPreset: (id) =>
+        set((s) => ({ workoutPresets: s.workoutPresets.filter((p) => p.id !== id) })),
+      renameWorkoutPreset: (id, name) =>
+        set((s) => ({
+          workoutPresets: s.workoutPresets.map((p) => (p.id === id ? { ...p, name: (name || '').trim() || p.name } : p)),
+        })),
+      applyWorkoutPreset: (weekday, presetId, mode = 'append') =>
+        set((s) => {
+          const preset = s.workoutPresets.find((p) => p.id === presetId);
+          if (!preset) return {};
+          return {
+            weeks: mutateDay(s, s.activeWeek, weekday, (day) => {
+              const cloned = preset.exercises.map((e) => ({ ...e }));
+              day.exercises = mode === 'replace' ? cloned : [...(day.exercises || []), ...cloned];
+            }),
+          };
+        }),
+
       // ── Mesocycles ──
       addMesocycle: (meso) =>
         set((s) => ({
@@ -220,6 +253,7 @@ export const useTrainingStore = create(
             weeks: data.weeks || {},
             log: data.log || {},
             library: data.library || cloneLibrary(),
+            workoutPresets: Array.isArray(data.workoutPresets) ? data.workoutPresets : [],
             mesocycles: Array.isArray(data.mesocycles) ? data.mesocycles : [],
             activeMesocycleId: data.activeMesocycleId || null,
           });
@@ -227,12 +261,14 @@ export const useTrainingStore = create(
           const s = get();
           cloudSave(CLOUD_KEY, {
             template: s.template, weeks: s.weeks, log: s.log, library: s.library,
+            workoutPresets: s.workoutPresets,
             mesocycles: s.mesocycles, activeMesocycleId: s.activeMesocycleId,
           });
         }
         useTrainingStore.subscribe((s) => {
           cloudSave(CLOUD_KEY, {
             template: s.template, weeks: s.weeks, log: s.log, library: s.library,
+            workoutPresets: s.workoutPresets,
             mesocycles: s.mesocycles, activeMesocycleId: s.activeMesocycleId,
           });
         });
@@ -247,6 +283,7 @@ export const useTrainingStore = create(
         if (!state.weeks) state.weeks = {};
         if (!state.log) state.log = {};
         if (!state.library) state.library = cloneLibrary();
+        if (!Array.isArray(state.workoutPresets)) state.workoutPresets = [];
         if (!Array.isArray(state.mesocycles)) state.mesocycles = [];
         if (state.activeMesocycleId === undefined) state.activeMesocycleId = null;
         if (!state.activeWeek) state.activeWeek = getMondayKey(new Date());
