@@ -7,9 +7,7 @@ export default function WorkoutDayCard({
   weekday, cfg, day, isSnapshot, status, kcalBurned, closedAt,
   onEditExercise, onOpenLog, onAddExercise,
   onResetDay, onSaveAsTemplate,
-  onApplyPreset, onSavePreset,
   onOpenEntry, onCloseEntry, onReopenEntry,
-  matchingPreset, hasAnyPresets,
   weekKey,
 }) {
   const [open, setOpen] = useState(true);
@@ -62,16 +60,6 @@ export default function WorkoutDayCard({
                 <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted">
                   Plan teórico
                 </span>
-              )}
-              {hasAnyPresets && (day?.exercises?.length > 0) && (
-                matchingPreset ? (
-                  <span
-                    className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/30 text-accent bg-accent/10 truncate max-w-[10rem]"
-                    title={`Coincide con preset "${matchingPreset.name}"`}
-                  >
-                    📋 {matchingPreset.name}
-                  </span>
-                ) : null
               )}
             </div>
             <div className="text-xs text-muted">
@@ -182,25 +170,12 @@ export default function WorkoutDayCard({
 
           {/* Footer actions — only when entry is open */}
           {isOpenStatus && (
-            <div className="p-3 border-t border-border grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <div className="p-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 onClick={() => onAddExercise?.(weekday)}
                 className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
               >
                 ＋ Agregar ejercicio
-              </button>
-              <button
-                onClick={() => onApplyPreset?.(weekday, cfg.label)}
-                className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
-              >
-                📋 Aplicar preset
-              </button>
-              <button
-                onClick={() => onSavePreset?.(weekday, cfg.label, day?.exercises || [])}
-                disabled={!day?.exercises?.length}
-                className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted disabled:hover:border-border"
-              >
-                💾 Guardar preset
               </button>
               <button
                 onClick={onCloseEntry}

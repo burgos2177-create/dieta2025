@@ -12,9 +12,15 @@ export default function MesocycleRoutinesEditor({
   open, onClose, meso, hasTemplateForWeekday,
   onAddExercise, onRemoveExercise, onUpdateExercise, onUpdateWeek,
   onMoveExercise, onImportFromTemplate, onFillFromWeek,
+  // Preset integration (presets live within the meso module now)
+  workoutPresets = [],
+  onApplyPresetToRoutine,    // (weekday, presetId, mode) => void
+  onSaveRoutineAsPreset,     // (weekday) => void  (opens save modal)
+  onOpenPresetsManager,      // () => void  (opens manage modal)
 }) {
   const [weekday, setWeekday] = useState(0);
   const [volumeWeekIdx, setVolumeWeekIdx] = useState(0);
+  const [pickingPreset, setPickingPreset] = useState(false);
 
   const N = meso?.weeks || 5;
   const dayRoutine = meso?.routines?.[weekday];
@@ -84,6 +90,82 @@ export default function MesocycleRoutinesEditor({
           Define reps, sets y peso por semana. La sobrecarga se aplica automáticamente al navegar a la semana correspondiente del mesociclo. Si editas algo durante la sesión, se crea un snapshot solo para ese día — la rutina queda intacta.
         </div>
 
+        {/* Preset toolbar */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            onClick={() => setPickingPreset(true)}
+            disabled={workoutPresets.length === 0}
+            className="px-3 py-1.5 text-xs rounded-md border border-border text-muted hover:text-white hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+            title={workoutPresets.length === 0 ? 'No hay presets guardados aún' : 'Cargar un preset en este día'}
+          >
+            📋 Aplicar preset
+          </button>
+          <button
+            onClick={() => onSaveRoutineAsPreset?.(weekday)}
+            disabled={!exercises.length}
+            className="px-3 py-1.5 text-xs rounded-md border border-border text-muted hover:text-white hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Guardar la rutina actual como preset (toma valores de S1)"
+          >
+            💾 Guardar como preset
+          </button>
+          <button
+            onClick={onOpenPresetsManager}
+            className="px-3 py-1.5 text-xs rounded-md border border-border text-muted hover:text-white hover:border-white/20"
+          >
+            🗂 Gestionar presets ({workoutPresets.length})
+          </button>
+        </div>
+
+        {/* Inline preset picker */}
+        {pickingPreset && (
+          <div className="bg-white/[0.02] border border-accent/30 rounded-lg p-3 space-y-2">
+            <div className="text-[0.65rem] uppercase tracking-wider text-accent font-display">
+              Selecciona un preset para llenar las {N} semanas de este día
+            </div>
+            <div className="text-[0.65rem] text-muted/80">
+              Los valores del preset se replicarán en todas las semanas; luego ajustas la sobrecarga semana a semana.
+            </div>
+            <div className="max-h-48 overflow-auto divide-y divide-border rounded border border-border">
+              {workoutPresets.map((p) => {
+                const totalVol = p.exercises.reduce(
+                  (a, e) => a + (Number(e.reps) || 0) * (Number(e.sets) || 0) * (Number(e.weight) || 0), 0
+                );
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      if (exercises.length > 0 &&
+                          !confirm('Esto reemplazará los ejercicios actuales del día. ¿Continuar?')) return;
+                      onApplyPresetToRoutine?.(weekday, p.id);
+                      setPickingPreset(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-white/5 transition"
+                  >
+                    <div className="flex justify-between items-baseline gap-2">
+                      <span className="text-sm text-white truncate">{p.name}</span>
+                      <span className="font-mono text-xs text-accent shrink-0">{totalVol.toFixed(0)} kg vol</span>
+                    </div>
+                    <div className="text-[0.65rem] text-muted mt-0.5 flex flex-wrap gap-x-2">
+                      <span>{p.exercises.length} ej.</span>
+                      {p.gym && <span>· 🏋 {p.gym}</span>}
+                      {p.mesoWeek != null && <span>· S{p.mesoWeek}</span>}
+                      {p.bodyWeightKg != null && <span>· {p.bodyWeightKg}kg corp.</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setPickingPreset(false)}
+                className="px-3 py-1 text-xs rounded border border-border text-muted hover:text-white"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Volume bars filtered to muscles in the selected day */}
         {dayMuscles.length > 0 && (
           <div className="bg-white/[0.02] border border-border rounded-lg p-3 space-y-2">
@@ -131,6 +213,14 @@ export default function MesocycleRoutinesEditor({
                   className="px-4 py-2 text-sm rounded-lg bg-accent text-black font-semibold"
                 >
                   ⬇ Importar de plantilla
+                </button>
+              )}
+              {workoutPresets.length > 0 && (
+                <button
+                  onClick={() => setPickingPreset(true)}
+                  className="px-4 py-2 text-sm rounded-lg border border-accent/40 bg-accent/5 text-accent hover:bg-accent/10"
+                >
+                  📋 Aplicar preset
                 </button>
               )}
               <button

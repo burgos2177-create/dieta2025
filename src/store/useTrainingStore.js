@@ -511,6 +511,16 @@ export const useTrainingStore = create(
             return { ...m, routines };
           }),
         })),
+      /** Replace the entire exercises list for a (meso, weekday). Used by
+       *  apply-preset-to-routine in replace mode. */
+      setMesoRoutineDayExercises: (mesoId, weekday, exercises) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) =>
+            m.id !== mesoId
+              ? m
+              : { ...m, routines: { ...(m.routines || {}), [weekday]: { exercises: [...exercises] } } }
+          ),
+        })),
       moveMesoRoutineExercise: (mesoId, weekday, fromIdx, toIdx) =>
         set((s) => ({
           mesocycles: s.mesocycles.map((m) => {
@@ -661,6 +671,43 @@ export function exercisesEqual(a, b) {
 export function findMatchingWorkoutPreset(presets, exercises) {
   if (!presets || !exercises) return null;
   return presets.find((p) => exercisesEqual(p.exercises, exercises)) || null;
+}
+
+/** Convert a workoutPreset's flat exercises array into the routine matrix
+ *  shape, replicating the same values across N weeks. */
+export function presetToRoutineExercises(preset, numWeeks) {
+  return (preset?.exercises || []).map((e) => ({
+    id: e.id,
+    name: e.name,
+    tech: e.tech || '',
+    muscle: e.muscle,
+    equipment: e.equipment || 'manual',
+    weeks: Array.from({ length: numWeeks }, () => ({
+      reps: Number(e.reps) || 0,
+      sets: Number(e.sets) || 0,
+      weight: Number(e.weight) || 0,
+      equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
+    })),
+  }));
+}
+
+/** Convert a routine day's exercises (with per-week values) into the flat
+ *  preset shape, taking values from the chosen week index (default 0). */
+export function routineDayToPresetExercises(dayRoutine, fromWeekIdx = 0) {
+  return (dayRoutine?.exercises || []).map((e) => {
+    const wk = e.weeks?.[fromWeekIdx] || e.weeks?.[0] || {};
+    return {
+      id: e.id,
+      name: e.name,
+      tech: e.tech || '',
+      muscle: e.muscle,
+      reps: Number(wk.reps) || 0,
+      sets: Number(wk.sets) || 0,
+      weight: Number(wk.weight) || 0,
+      equipment: e.equipment || 'manual',
+      equipmentData: wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 },
+    };
+  });
 }
 
 /** Re-export for convenience */
