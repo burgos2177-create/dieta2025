@@ -1,25 +1,35 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { MUSCLE_COLORS, MUSCLE_LABELS } from '../../lib/constants.js';
 import { useTrainingStore } from '../../store/useTrainingStore.js';
-import { lbToKg } from '../../lib/calculators.js';
-
-function parseWeight(raw) {
-  if (typeof raw === 'number') return raw;
-  const s = String(raw).trim();
-  if (/lb$/i.test(s)) return Math.round(lbToKg(parseFloat(s)) * 100) / 100;
-  return s === '' ? 0 : parseFloat(s) || 0;
-}
+import EquipmentWeightInput from './EquipmentWeightInput.jsx';
 
 export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isFirst, isLast }) {
-  const updateExercise = useTrainingStore((s) => s.updateExercise);
+  const updateExerciseFields = useTrainingStore((s) => s.updateExerciseFields);
   const deleteExercise = useTrainingStore((s) => s.deleteExercise);
   const reorderExercise = useTrainingStore((s) => s.reorderExercise);
   const appendLog = useTrainingStore((s) => s.appendLog);
   const log = useTrainingStore((s) => s.log[ex.id] || []);
 
-  const [local, setLocal] = useState({ reps: ex.reps, sets: ex.sets, weight: ex.weight });
-  const [weightRaw, setWeightRaw] = useState(String(ex.weight));
+  const [local, setLocal] = useState({
+    reps: ex.reps,
+    sets: ex.sets,
+    weight: Number(ex.weight) || 0,
+    equipment: ex.equipment || 'manual',
+    equipmentData: ex.equipmentData || { kg: Number(ex.weight) || 0 },
+  });
   const [dirty, setDirty] = useState(false);
+
+  // Sync from props if exercise changes (e.g. preset applied or week changed)
+  useEffect(() => {
+    setLocal({
+      reps: ex.reps,
+      sets: ex.sets,
+      weight: Number(ex.weight) || 0,
+      equipment: ex.equipment || 'manual',
+      equipmentData: ex.equipmentData || { kg: Number(ex.weight) || 0 },
+    });
+    setDirty(false);
+  }, [ex]);
 
   const vol = (Number(local.reps) || 0) * (Number(local.sets) || 0) * (Number(local.weight) || 0);
 
@@ -40,28 +50,38 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
     setDirty(true);
   };
 
+  const onWeightChange = (next) => {
+    setLocal((s) => ({
+      ...s,
+      equipment: next.equipment,
+      equipmentData: next.equipmentData,
+      weight: next.weight,
+    }));
+    setDirty(true);
+  };
+
   const register = () => {
-    const kg = parseWeight(weightRaw);
     const reps = Number(local.reps) || 0;
     const sets = Number(local.sets) || 0;
+    const kg = Number(local.weight) || 0;
     const newVol = reps * sets * kg;
     const today = new Date().toISOString().slice(0, 10);
-    updateExercise(weekday, exIdx, 'reps', reps);
-    updateExercise(weekday, exIdx, 'sets', sets);
-    updateExercise(weekday, exIdx, 'weight', kg);
+    updateExerciseFields(weekday, exIdx, {
+      reps, sets, weight: kg,
+      equipment: local.equipment,
+      equipmentData: local.equipmentData,
+    });
     appendLog(ex.id, { date: today, reps, sets, weight: kg, vol: newVol });
-    setLocal({ reps, sets, weight: kg });
-    setWeightRaw(String(kg));
     setDirty(false);
   };
 
   return (
     <tr className="border-t border-border hover:bg-white/[0.02]">
-      <td className="py-2 pr-2">
+      <td className="py-2 pr-2 align-top">
         <div className="text-sm text-white leading-tight">{ex.name}</div>
         <div className="text-[0.65rem] text-muted mt-0.5">{ex.tech}</div>
       </td>
-      <td className="py-2 px-1">
+      <td className="py-2 px-1 align-top">
         <span
           className="inline-block px-2 py-0.5 rounded text-[0.65rem] font-medium"
           style={{ background: color + '22', color, border: `1px solid ${color}44` }}
@@ -69,7 +89,7 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
           {MUSCLE_LABELS[ex.muscle] || ex.muscle}
         </span>
       </td>
-      <td className="py-2 px-1 w-16">
+      <td className="py-2 px-1 w-16 align-top">
         <input
           type="number"
           value={local.reps}
@@ -77,7 +97,7 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
           className="!py-1 !px-1.5 text-sm text-center"
         />
       </td>
-      <td className="py-2 px-1 w-16">
+      <td className="py-2 px-1 w-16 align-top">
         <input
           type="number"
           value={local.sets}
@@ -85,24 +105,15 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
           className="!py-1 !px-1.5 text-sm text-center"
         />
       </td>
-      <td className="py-2 px-1 w-24">
-        <input
-          type="text"
-          inputMode="decimal"
-          value={weightRaw}
-          onChange={(e) => {
-            setWeightRaw(e.target.value);
-            const kg = parseWeight(e.target.value);
-            setLocal((s) => ({ ...s, weight: kg }));
-            setDirty(true);
-          }}
-          placeholder="kg o lb"
-          className="!py-1 !px-1.5 text-sm text-center"
+      <td className="py-2 px-1 align-top">
+        <EquipmentWeightInput
+          value={{ equipment: local.equipment, equipmentData: local.equipmentData, weight: local.weight }}
+          onChange={onWeightChange}
         />
       </td>
-      <td className="py-2 px-2 font-mono text-sm text-accent text-right w-20">{vol.toFixed(1)}</td>
-      <td className={`py-2 px-2 font-mono text-xs text-right w-16 ${deltaTone}`}>{deltaStr}</td>
-      <td className="py-2 px-1 text-right whitespace-nowrap">
+      <td className="py-2 px-2 font-mono text-sm text-accent text-right w-20 align-top">{vol.toFixed(1)}</td>
+      <td className={`py-2 px-2 font-mono text-xs text-right w-16 align-top ${deltaTone}`}>{deltaStr}</td>
+      <td className="py-2 px-1 text-right whitespace-nowrap align-top">
         <button
           onClick={() => !isFirst && reorderExercise(weekday, exIdx, exIdx - 1)}
           disabled={isFirst}

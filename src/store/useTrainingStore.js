@@ -105,6 +105,29 @@ export const useTrainingStore = create(
           return { weeks, log };
         }),
 
+      /** Apply an arbitrary patch to an exercise (auto-logs once). */
+      updateExerciseFields: (weekday, exIdx, patch) =>
+        set((s) => {
+          const weeks = mutateDay(s, s.activeWeek, weekday, (day) => {
+            day.exercises = day.exercises.map((e, ei) =>
+              ei === exIdx ? { ...e, ...patch } : e
+            );
+          });
+          const ex = weeks[s.activeWeek][weekday].exercises[exIdx];
+          const vol = (Number(ex.reps) || 0) * (Number(ex.sets) || 0) * (Number(ex.weight) || 0);
+          const log = { ...s.log };
+          const list = log[ex.id] || [];
+          const today = new Date().toISOString().slice(0, 10);
+          const lastSameDay = [...list].reverse().find((l) => l.date === today);
+          if (!lastSameDay || Math.abs(lastSameDay.vol - vol) > 0.1) {
+            log[ex.id] = [
+              ...list,
+              { date: today, reps: Number(ex.reps) || 0, sets: Number(ex.sets) || 0, weight: Number(ex.weight) || 0, vol },
+            ];
+          }
+          return { weeks, log };
+        }),
+
       addExercise: (weekday, exercise) =>
         set((s) => {
           const id = exercise.id || 'e' + Date.now();

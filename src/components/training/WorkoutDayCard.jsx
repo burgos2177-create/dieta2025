@@ -77,7 +77,7 @@ export default function WorkoutDayCard({
                 <th className="text-left py-2 px-1">Músculo</th>
                 <th className="py-2 px-1">Reps</th>
                 <th className="py-2 px-1">Sets</th>
-                <th className="py-2 px-1">Peso</th>
+                <th className="py-2 px-1">Equipo · Peso</th>
                 <th className="text-right py-2 px-2">Vol</th>
                 <th className="text-right py-2 px-2">Δ</th>
                 <th className="py-2 px-1"></th>

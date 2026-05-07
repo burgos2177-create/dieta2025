@@ -22,7 +22,7 @@ export default function TrainingPage() {
     template, weeks, mesocycles, activeMesocycleId, activeWeek,
     workoutPresets,
     setActiveWeek,
-    addExercise, updateExercise,
+    addExercise, updateExercise, updateExerciseFields,
     resetDayToTemplate, saveDayAsTemplate,
     addMesocycle, updateMesocycle, removeMesocycle, setActiveMesocycleId, resetMesoStart,
     saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset,
@@ -59,8 +59,15 @@ export default function TrainingPage() {
   };
   const save = (weekday, payload) => {
     if (editing) {
-      ['name', 'tech', 'muscle', 'reps', 'sets', 'weight'].forEach((f) => {
-        updateExercise(editing.weekday, editing.exIdx, f, payload[f]);
+      updateExerciseFields(editing.weekday, editing.exIdx, {
+        name: payload.name,
+        tech: payload.tech,
+        muscle: payload.muscle,
+        reps: Number(payload.reps) || 0,
+        sets: Number(payload.sets) || 0,
+        weight: Number(payload.weight) || 0,
+        equipment: payload.equipment || 'manual',
+        equipmentData: payload.equipmentData || {},
       });
       showToast('✅ Ejercicio actualizado', 'ok');
     } else {

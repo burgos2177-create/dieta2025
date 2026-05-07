@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react';
 import Modal from '../ui/Modal.jsx';
 import { MUSCLE_LABELS, TR_DAYS_CONFIG } from '../../lib/constants.js';
 import { useTrainingStore } from '../../store/useTrainingStore.js';
+import EquipmentWeightInput from './EquipmentWeightInput.jsx';
+import { defaultEquipmentData } from '../../lib/equipment.js';
 
-const EMPTY = { name: '', tech: '', muscle: 'CUAD', reps: 10, sets: 3, weight: 0 };
+const EMPTY = {
+  name: '', tech: '', muscle: 'CUAD',
+  reps: 10, sets: 3, weight: 0,
+  equipment: 'manual',
+  equipmentData: { kg: 0 },
+};
 
 export default function AddExerciseModal({ open, onClose, onSave, weekday, initial }) {
   const library = useTrainingStore((s) => s.library);
@@ -16,7 +23,11 @@ export default function AddExerciseModal({ open, onClose, onSave, weekday, initi
 
   useEffect(() => {
     if (open) {
-      setForm(initial ? { ...initial } : { ...EMPTY });
+      const base = initial ? { ...initial } : { ...EMPTY };
+      // Backfill equipment fields if missing on legacy exercises
+      if (!base.equipment) base.equipment = 'manual';
+      if (!base.equipmentData) base.equipmentData = defaultEquipmentData(base.equipment, Number(base.weight) || 0);
+      setForm(base);
       setDay(weekday ?? 0);
       setLibSearch('');
       setAskLib(false);
@@ -166,18 +177,35 @@ export default function AddExerciseModal({ open, onClose, onSave, weekday, initi
             />
           </Field>
 
-          {/* Reps / Sets / Peso */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Reps / Sets */}
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Reps">
               <input type="number" min="1" value={form.reps} onChange={(e) => upd('reps', e.target.value)} />
             </Field>
             <Field label="Sets">
               <input type="number" min="1" value={form.sets} onChange={(e) => upd('sets', e.target.value)} />
             </Field>
-            <Field label="Peso (kg)">
-              <input type="number" step="0.1" min="0" value={form.weight} onChange={(e) => upd('weight', e.target.value)} />
-            </Field>
           </div>
+
+          {/* Equipo + peso */}
+          <Field label="Equipo y peso">
+            <div className="bg-white/[0.02] border border-border rounded-lg p-3">
+              <EquipmentWeightInput
+                compact={false}
+                value={{
+                  equipment: form.equipment,
+                  equipmentData: form.equipmentData,
+                  weight: Number(form.weight) || 0,
+                }}
+                onChange={(next) => setForm((s) => ({
+                  ...s,
+                  equipment: next.equipment,
+                  equipmentData: next.equipmentData,
+                  weight: next.weight,
+                }))}
+              />
+            </div>
+          </Field>
 
           <div className="flex justify-end gap-2 pt-2">
             <button
