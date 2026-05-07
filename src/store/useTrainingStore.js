@@ -61,14 +61,58 @@ export function selectTrainingDay(state, weekKey, weekday) {
   return state.template?.[weekday] || null;
 }
 
-/** Returns array of {weekday, day, isSnapshot} for all training days in the week.
- *  Uses selectTrainingDay so it honors mesocycle.routines when active. */
+/** Returns array of {weekday, day, isSnapshot, status, kcalBurned, ...} for all
+ *  training days in the week. Uses selectTrainingDay so it honors
+ *  mesocycle.routines when active. status is 'planned'|'open'|'closed'. */
 export function selectTrainingDaysForWeek(state, weekKey) {
   return TR_DAYS_CONFIG.map((cfg) => {
     const snap = state.weeks?.[weekKey]?.[cfg.weekday];
     const day = selectTrainingDay(state, weekKey, cfg.weekday);
-    return { weekday: cfg.weekday, cfg, day, isSnapshot: !!snap };
+    let status = 'planned';
+    if (snap) status = snap.status === 'closed' ? 'closed' : 'open';
+    return {
+      weekday: cfg.weekday,
+      cfg,
+      day,
+      isSnapshot: !!snap,
+      status,
+      kcalBurned: snap?.kcalBurned ?? null,
+      closedAt: snap?.closedAt ?? null,
+      openedAt: snap?.openedAt ?? null,
+    };
   }).filter((x) => x.day);
+}
+
+/** Find the most recent prior week's snapshot for the same (weekday, exerciseId). */
+export function findPreviousExecuted(state, weekKey, weekday, exerciseId) {
+  const keys = Object.keys(state.weeks || {}).sort().filter((k) => k < weekKey);
+  for (let i = keys.length - 1; i >= 0; i--) {
+    const wk = keys[i];
+    const day = state.weeks[wk]?.[weekday];
+    if (!day) continue;
+    const ex = (day.exercises || []).find((e) => e.id === exerciseId);
+    if (ex) {
+      const reps = Number(ex.reps) || 0;
+      const sets = Number(ex.sets) || 0;
+      const weight = Number(ex.weight) || 0;
+      return { reps, sets, weight, vol: reps * sets * weight, weekKey: wk };
+    }
+  }
+  return null;
+}
+
+/** Find the planned (theoretical) values for an exercise at a given (weekKey, weekday)
+ *  using the active mesocycle's routine. Returns null if no planned exists. */
+export function findTheoreticalForExercise(state, weekKey, weekday, exerciseId) {
+  const info = getMesoInfoForWeek(state.mesocycles, state.activeMesocycleId, weekKey);
+  if (!info?.meso?.routines?.[weekday]?.exercises?.length) return null;
+  const ex = info.meso.routines[weekday].exercises.find((e) => e.id === exerciseId);
+  if (!ex) return null;
+  const wk = ex.weeks?.[info.weekNumber - 1] || ex.weeks?.[0] || {};
+  const reps = Number(wk.reps) || 0;
+  const sets = Number(wk.sets) || 0;
+  const weight = Number(wk.weight) || 0;
+  return { reps, sets, weight, vol: reps * sets * weight };
 }
 
 export function isTrainingDaySnapshot(state, weekKey, weekday) {
@@ -216,6 +260,57 @@ export const useTrainingStore = create(
             day.exercises = day.exercises.filter((_, ei) => ei !== exIdx);
           }),
         })),
+
+      // ── Day session lifecycle ──
+      /** Materialize the current planned view (meso routine or template) into a
+       *  snapshot, ready to be edited. Marks the entry as 'open'. */
+      openDayEntry: (weekKey, weekday) =>
+        set((s) => {
+          const planned = selectTrainingDay(s, weekKey, weekday) || { exercises: [] };
+          // Already a snapshot? Make sure it is open (re-uses existing exercises).
+          const existing = s.weeks?.[weekKey]?.[weekday];
+          const day = existing
+            ? { ...existing, status: 'open', closedAt: undefined, openedAt: existing.openedAt || Date.now() }
+            : {
+                exercises: (planned.exercises || []).map((e) => ({
+                  ...e,
+                  equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
+                })),
+                status: 'open',
+                openedAt: Date.now(),
+              };
+          const weeks = { ...(s.weeks || {}) };
+          const week = { ...(weeks[weekKey] || {}) };
+          week[weekday] = day;
+          weeks[weekKey] = week;
+          return { weeks };
+        }),
+      /** Close a day entry, optionally with kcal burned. */
+      closeDayEntry: (weekKey, weekday, kcalBurned) =>
+        set((s) => {
+          const day = s.weeks?.[weekKey]?.[weekday];
+          if (!day) return {};
+          const updated = {
+            ...day,
+            status: 'closed',
+            kcalBurned: Number(kcalBurned) || 0,
+            closedAt: Date.now(),
+          };
+          const weeks = { ...s.weeks };
+          weeks[weekKey] = { ...weeks[weekKey], [weekday]: updated };
+          return { weeks };
+        }),
+      /** Re-open a closed day entry. */
+      reopenDayEntry: (weekKey, weekday) =>
+        set((s) => {
+          const day = s.weeks?.[weekKey]?.[weekday];
+          if (!day) return {};
+          const { kcalBurned: _kc, closedAt: _ca, ...rest } = day;
+          const updated = { ...rest, status: 'open' };
+          const weeks = { ...s.weeks };
+          weeks[weekKey] = { ...weeks[weekKey], [weekday]: updated };
+          return { weeks };
+        }),
 
       // Drop a snapshot — day reverts to template
       resetDayToTemplate: (weekKey, weekday) =>

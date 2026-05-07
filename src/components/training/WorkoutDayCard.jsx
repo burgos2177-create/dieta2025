@@ -4,12 +4,13 @@ import Pill from '../ui/Pill.jsx';
 import ExerciseRow from './ExerciseRow.jsx';
 
 export default function WorkoutDayCard({
-  weekday, cfg, day, isSnapshot,
+  weekday, cfg, day, isSnapshot, status, kcalBurned, closedAt,
   onEditExercise, onOpenLog, onAddExercise,
   onResetDay, onSaveAsTemplate,
   onApplyPreset, onSavePreset,
-  matchingPreset,   // preset object or null
-  hasAnyPresets,    // true when there's at least 1 preset to compare against
+  onOpenEntry, onCloseEntry, onReopenEntry,
+  matchingPreset, hasAnyPresets,
+  weekKey,
 }) {
   const [open, setOpen] = useState(true);
   const totalVol = (day?.exercises || []).reduce(
@@ -17,6 +18,16 @@ export default function WorkoutDayCard({
     0
   );
   const tone = cfg.color === 'green' ? 'green' : cfg.color === 'yellow' ? 'yellow' : 'cyan';
+  const isPlanned = status === 'planned';
+  const isOpenStatus = status === 'open';
+  const isClosed = status === 'closed';
+  const readOnly = isPlanned || isClosed;
+
+  const closedDate = closedAt
+    ? new Date(closedAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) +
+      ' ' + new Date(closedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+    : '';
+
   return (
     <Card pad={false}>
       <div
@@ -36,30 +47,40 @@ export default function WorkoutDayCard({
           <div className="text-left min-w-0">
             <div className="flex items-baseline gap-2 min-w-0">
               <div className="font-display text-lg text-white tracking-wide truncate">{cfg.focus}</div>
+              {isClosed ? (
+                <span
+                  className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/20 bg-white/[0.04] text-muted"
+                  title={`Cerrado ${closedDate}${kcalBurned > 0 ? ` · ${kcalBurned} kcal` : ''}`}
+                >
+                  🔒 Cerrado
+                </span>
+              ) : isOpenStatus ? (
+                <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/40 bg-accent/10 text-accent">
+                  ● En curso
+                </span>
+              ) : (
+                <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted">
+                  Plan teórico
+                </span>
+              )}
               {hasAnyPresets && (day?.exercises?.length > 0) && (
                 matchingPreset ? (
                   <span
-                    className="text-[0.65rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/30 text-accent bg-accent/10 truncate max-w-[12rem]"
+                    className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/30 text-accent bg-accent/10 truncate max-w-[10rem]"
                     title={`Coincide con preset "${matchingPreset.name}"`}
                   >
                     📋 {matchingPreset.name}
                   </span>
-                ) : (
-                  <span
-                    className="text-[0.65rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-warn/30 text-warn bg-warn/10"
-                    title="Esta rutina no coincide con ningún preset guardado"
-                  >
-                    ✦ Rutina nueva
-                  </span>
-                )
+                ) : null
               )}
             </div>
             <div className="text-xs text-muted">
               {day?.exercises?.length || 0} ejercicios
-              {isSnapshot ? (
-                <span className="ml-2 text-accent">· registro</span>
-              ) : (
-                <span className="ml-2 text-muted/60">· plantilla</span>
+              {isClosed && kcalBurned > 0 && (
+                <span className="ml-2 text-accent">· {kcalBurned} kcal</span>
+              )}
+              {isClosed && kcalBurned === 0 && (
+                <span className="ml-2 text-muted/70">· kcal no medido</span>
               )}
             </div>
           </div>
@@ -69,28 +90,64 @@ export default function WorkoutDayCard({
             <div className="font-mono text-accent">{totalVol.toFixed(0)} kg vol</div>
             <div className="text-[0.65rem] text-muted">{open ? '▾' : '▸'}</div>
           </div>
-          {isSnapshot && (
+          {isOpenStatus && (
             <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
               <button
                 onClick={onResetDay}
-                title="Borrar registro y volver a plantilla"
+                title="Borrar registro y volver al plan teórico"
                 className="text-muted hover:text-bad px-2 py-1 text-xs"
               >
                 ↺
               </button>
               <button
                 onClick={onSaveAsTemplate}
-                title="Guardar como nueva plantilla"
+                title="Guardar como plantilla"
                 className="text-muted hover:text-accent px-2 py-1 text-xs"
               >
                 💾
               </button>
             </div>
           )}
+          {isClosed && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={onReopenEntry}
+                title="Reabrir el entrenamiento"
+                className="text-muted hover:text-accent px-2 py-1 text-xs"
+              >
+                🔓
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
       {open && (
         <div className="border-t border-border overflow-x-auto">
+          {/* Status banner / call-to-action */}
+          {isPlanned && (
+            <div className="px-4 py-2 bg-white/[0.02] border-b border-border flex items-center justify-between">
+              <div className="text-xs text-muted">
+                Esta sesión aún no se ha registrado. Mientras tanto verás el plan teórico (solo lectura).
+              </div>
+              <button
+                onClick={onOpenEntry}
+                className="px-3 py-1.5 text-xs rounded-md bg-accent text-black font-semibold hover:brightness-110 whitespace-nowrap"
+              >
+                ▶ Hacer entrada
+              </button>
+            </div>
+          )}
+          {isClosed && (
+            <div className="px-4 py-2 bg-white/[0.02] border-b border-border flex items-center justify-between">
+              <div className="text-xs text-muted">
+                Entrenamiento cerrado{closedDate ? ` el ${closedDate}` : ''}
+                {kcalBurned > 0 ? ` · ${kcalBurned} kcal` : ' · kcal no medido'}.
+                Reábrelo si necesitas modificar algo.
+              </div>
+            </div>
+          )}
+
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[0.65rem] uppercase tracking-wider text-muted">
@@ -100,7 +157,8 @@ export default function WorkoutDayCard({
                 <th className="py-2 px-1">Sets</th>
                 <th className="py-2 px-1">Equipo · Peso</th>
                 <th className="text-right py-2 px-2">Vol</th>
-                <th className="text-right py-2 px-2">Δ</th>
+                <th className="text-right py-2 px-2">Δ teó.</th>
+                <th className="text-right py-2 px-2">Δ ant.</th>
                 <th className="py-2 px-1"></th>
               </tr>
             </thead>
@@ -113,33 +171,45 @@ export default function WorkoutDayCard({
                   ex={ex}
                   isFirst={ei === 0}
                   isLast={ei === day.exercises.length - 1}
+                  readOnly={readOnly}
+                  weekKey={weekKey}
                   onEdit={(e, idx) => onEditExercise?.(weekday, idx, e)}
                   onOpenLog={onOpenLog}
                 />
               ))}
             </tbody>
           </table>
-          <div className="p-3 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button
-              onClick={() => onAddExercise?.(weekday)}
-              className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
-            >
-              ＋ Agregar ejercicio
-            </button>
-            <button
-              onClick={() => onApplyPreset?.(weekday, cfg.label)}
-              className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
-            >
-              📋 Aplicar preset
-            </button>
-            <button
-              onClick={() => onSavePreset?.(weekday, cfg.label, day?.exercises || [])}
-              disabled={!day?.exercises?.length}
-              className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted disabled:hover:border-border"
-            >
-              💾 Guardar preset
-            </button>
-          </div>
+
+          {/* Footer actions — only when entry is open */}
+          {isOpenStatus && (
+            <div className="p-3 border-t border-border grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <button
+                onClick={() => onAddExercise?.(weekday)}
+                className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
+              >
+                ＋ Agregar ejercicio
+              </button>
+              <button
+                onClick={() => onApplyPreset?.(weekday, cfg.label)}
+                className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition"
+              >
+                📋 Aplicar preset
+              </button>
+              <button
+                onClick={() => onSavePreset?.(weekday, cfg.label, day?.exercises || [])}
+                disabled={!day?.exercises?.length}
+                className="border border-dashed border-border rounded-lg py-2 text-sm text-muted hover:text-accent hover:border-accent/40 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted disabled:hover:border-border"
+              >
+                💾 Guardar preset
+              </button>
+              <button
+                onClick={onCloseEntry}
+                className="border border-accent/40 bg-accent/5 rounded-lg py-2 text-sm text-accent hover:bg-accent/10 font-semibold transition"
+              >
+                🔒 Cerrar entrenamiento
+              </button>
+            </div>
+          )}
         </div>
       )}
     </Card>

@@ -8,6 +8,7 @@ import SaveWorkoutPresetModal from './SaveWorkoutPresetModal.jsx';
 import ApplyWorkoutPresetModal from './ApplyWorkoutPresetModal.jsx';
 import WorkoutPresetsManagerModal from './WorkoutPresetsManagerModal.jsx';
 import LogDetailModal from '../progression/LogDetailModal.jsx';
+import CloseEntryModal from './CloseEntryModal.jsx';
 import WeekNavigator from '../nutrition/WeekNavigator.jsx';
 import { useTrainingStore, selectTrainingDaysForWeek, selectTrainingDay, findMatchingWorkoutPreset } from '../../store/useTrainingStore.js';
 import { useNutritionStore } from '../../store/useNutritionStore.js';
@@ -29,6 +30,7 @@ export default function TrainingPage() {
     addMesoRoutineExercise, removeMesoRoutineExercise, updateMesoRoutineExercise,
     updateMesoRoutineWeek, moveMesoRoutineExercise, importMesoRoutineFromTemplate,
     fillMesoRoutineWeeksFrom,
+    openDayEntry, closeDayEntry, reopenDayEntry,
     saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset, overwriteWorkoutPreset, duplicateWorkoutPreset,
   } = useTrainingStore();
 
@@ -43,6 +45,7 @@ export default function TrainingPage() {
   const [logEx, setLogEx] = useState(null);
   const [mesoOpen, setMesoOpen] = useState(false);
   const [editingRoutinesId, setEditingRoutinesId] = useState(null);
+  const [closingFor, setClosingFor] = useState(null); // { weekday, label, totalVol }
   const [savePresetFor, setSavePresetFor] = useState(null);  // {weekday, label, exercises}
   const [applyPresetFor, setApplyPresetFor] = useState(null); // {weekday, label}
   const [presetsOpen, setPresetsOpen] = useState(false);
@@ -165,13 +168,17 @@ export default function TrainingPage() {
       <VolumeDashboard days={trainingDays.map((d) => d.day)} />
 
       <div className="space-y-4">
-        {trainingDays.map(({ weekday, cfg, day, isSnapshot: snap }) => (
+        {trainingDays.map(({ weekday, cfg, day, isSnapshot: snap, status, kcalBurned, closedAt }) => (
           <WorkoutDayCard
             key={weekday}
             weekday={weekday}
             cfg={cfg}
             day={day}
             isSnapshot={snap}
+            status={status}
+            kcalBurned={kcalBurned}
+            closedAt={closedAt}
+            weekKey={activeWeek}
             matchingPreset={findMatchingWorkoutPreset(workoutPresets, day?.exercises || [])}
             hasAnyPresets={workoutPresets.length > 0}
             onAddExercise={openAdd}
@@ -191,6 +198,22 @@ export default function TrainingPage() {
             }}
             onApplyPreset={(wd, label) => setApplyPresetFor({ weekday: wd, label })}
             onSavePreset={(wd, label, exercises) => setSavePresetFor({ weekday: wd, label, exercises })}
+            onOpenEntry={() => {
+              openDayEntry(activeWeek, weekday);
+              showToast('Entrada abierta', 'ok');
+            }}
+            onCloseEntry={() => {
+              const totalVol = (day?.exercises || []).reduce(
+                (a, e) => a + (Number(e.reps) || 0) * (Number(e.sets) || 0) * (Number(e.weight) || 0), 0
+              );
+              setClosingFor({ weekday, label: cfg.label, totalVol });
+            }}
+            onReopenEntry={() => {
+              if (confirm(`¿Reabrir el entrenamiento de ${cfg.label}? Podrás volver a editarlo.`)) {
+                reopenDayEntry(activeWeek, weekday);
+                showToast('Entrenamiento reabierto');
+              }
+            }}
           />
         ))}
       </div>
@@ -279,6 +302,17 @@ export default function TrainingPage() {
         onSetActive={(id) => { setActiveMesocycleId(id); showToast(id ? 'Mesociclo activado' : 'Mesociclo desactivado', 'ok'); }}
         onResetStart={(id, wk) => { resetMesoStart(id, wk); showToast('Inicio reseteado a esta semana', 'ok'); }}
         onEditRoutines={(id) => { setMesoOpen(false); setEditingRoutinesId(id); }}
+      />
+
+      <CloseEntryModal
+        open={!!closingFor}
+        onClose={() => setClosingFor(null)}
+        dayLabel={closingFor?.label}
+        totalVol={closingFor?.totalVol}
+        onConfirm={(kcal) => {
+          closeDayEntry(activeWeek, closingFor.weekday, kcal);
+          showToast('Entrenamiento cerrado', 'ok');
+        }}
       />
 
       <MesocycleRoutinesEditor
