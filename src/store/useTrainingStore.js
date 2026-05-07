@@ -4,6 +4,7 @@ import { SEED_TRAINING, SEED_LIBRARY, TR_DAYS_CONFIG } from '../lib/constants';
 import { cloudLoad, cloudSave } from '../lib/cloudSync';
 import { getMondayKey, todayDayIdx } from '../lib/dates';
 import { getMesoInfoForWeek } from '../lib/mesocycle';
+import { computeWeightKg } from '../lib/equipment';
 
 const CLOUD_KEY = 'training';
 
@@ -31,9 +32,21 @@ function migrateLegacy(state) {
   }
 }
 
+/** Recompute the canonical kg for an exercise. For 'bodyweight' equipment we
+ *  re-derive on the fly from current profile + extraKg, so changes to the
+ *  user's body weight propagate retroactively. For other equipment we keep
+ *  the stored value. */
+function resolveExerciseWeight(equipment, equipmentData, storedWeight, ctx) {
+  if (equipment === 'bodyweight') {
+    return computeWeightKg(equipment, equipmentData, ctx);
+  }
+  return Number(storedWeight) || 0;
+}
+
 /** Returns the *theoretical* / planned day for (weekKey, weekday), skipping
- *  any snapshot. Used for the 'view planned' toggle and reset-to-planned. */
-export function selectTheoreticalDay(state, weekKey, weekday) {
+ *  any snapshot. Used for the 'view planned' toggle and reset-to-planned.
+ *  `ctx.bodyweight` is used to live-recompute bodyweight equipment. */
+export function selectTheoreticalDay(state, weekKey, weekday, ctx = {}) {
   const info = getMesoInfoForWeek(state.mesocycles, state.activeMesocycleId, weekKey);
   if (info?.meso?.routines?.[weekday]?.exercises?.length > 0) {
     const exs = info.meso.routines[weekday].exercises;
@@ -41,16 +54,18 @@ export function selectTheoreticalDay(state, weekKey, weekday) {
     return {
       exercises: exs.map((ex) => {
         const wk = ex.weeks?.[weekIdx] || ex.weeks?.[0] || {};
+        const equipment = ex.equipment || 'manual';
+        const equipmentData = wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 };
         return {
           id: ex.id,
           name: ex.name,
           tech: ex.tech || '',
           muscle: ex.muscle,
-          equipment: ex.equipment || 'manual',
-          equipmentData: wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 },
+          equipment,
+          equipmentData,
           reps: Number(wk.reps) || 0,
           sets: Number(wk.sets) || 0,
-          weight: Number(wk.weight) || 0,
+          weight: resolveExerciseWeight(equipment, equipmentData, wk.weight, ctx),
         };
       }),
     };
@@ -61,26 +76,39 @@ export function selectTheoreticalDay(state, weekKey, weekday) {
 /** Resolve a training day for (weekKey, weekday):
  *  1. Snapshot (manual edit) wins.
  *  2. Active mesocycle's routine for this (weekday, week-in-meso) if defined.
- *  3. Static template fallback. */
-export function selectTrainingDay(state, weekKey, weekday) {
+ *  3. Static template fallback.
+ *  `ctx.bodyweight` is used to live-recompute bodyweight equipment. */
+export function selectTrainingDay(state, weekKey, weekday, ctx = {}) {
   const snap = state.weeks?.[weekKey]?.[weekday];
-  if (snap) return snap;
+  if (snap) {
+    // Even on snapshots, recompute bodyweight on the fly so profile changes
+    // propagate (the stored weight is allowed to be stale for bodyweight).
+    return {
+      ...snap,
+      exercises: (snap.exercises || []).map((ex) => ({
+        ...ex,
+        weight: resolveExerciseWeight(ex.equipment, ex.equipmentData, ex.weight, ctx),
+      })),
+    };
+  }
   const info = getMesoInfoForWeek(state.mesocycles, state.activeMesocycleId, weekKey);
   if (info?.meso?.routines?.[weekday]?.exercises?.length > 0) {
     const exs = info.meso.routines[weekday].exercises;
     const weekIdx = info.weekNumber - 1;
     const exercises = exs.map((ex) => {
       const wk = ex.weeks?.[weekIdx] || ex.weeks?.[0] || {};
+      const equipment = ex.equipment || 'manual';
+      const equipmentData = wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 };
       return {
         id: ex.id,
         name: ex.name,
         tech: ex.tech || '',
         muscle: ex.muscle,
-        equipment: ex.equipment || 'manual',
-        equipmentData: wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 },
+        equipment,
+        equipmentData,
         reps: Number(wk.reps) || 0,
         sets: Number(wk.sets) || 0,
-        weight: Number(wk.weight) || 0,
+        weight: resolveExerciseWeight(equipment, equipmentData, wk.weight, ctx),
       };
     });
     return { exercises };
@@ -90,14 +118,15 @@ export function selectTrainingDay(state, weekKey, weekday) {
 
 /** Returns array of {weekday, day, isSnapshot, status, kcalBurned, ...} for all
  *  training days in the week. Uses selectTrainingDay so it honors
- *  mesocycle.routines when active. status is 'planned'|'open'|'closed'. */
-export function selectTrainingDaysForWeek(state, weekKey) {
+ *  mesocycle.routines when active. status is 'planned'|'open'|'closed'.
+ *  `ctx.bodyweight` is forwarded to the day resolvers. */
+export function selectTrainingDaysForWeek(state, weekKey, ctx = {}) {
   return TR_DAYS_CONFIG.map((cfg) => {
     const snap = state.weeks?.[weekKey]?.[cfg.weekday];
-    const day = selectTrainingDay(state, weekKey, cfg.weekday);
+    const day = selectTrainingDay(state, weekKey, cfg.weekday, ctx);
     let status = 'planned';
     if (snap) status = snap.status === 'closed' ? 'closed' : 'open';
-    const theoretical = selectTheoreticalDay(state, weekKey, cfg.weekday);
+    const theoretical = selectTheoreticalDay(state, weekKey, cfg.weekday, ctx);
     return {
       weekday: cfg.weekday,
       cfg,

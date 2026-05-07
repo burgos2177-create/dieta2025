@@ -33,8 +33,11 @@ export default function TrainingPage() {
     saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, overwriteWorkoutPreset, duplicateWorkoutPreset, regenerateWorkoutPresetsFromMeso,
   } = useTrainingStore();
 
-  const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
   const profile = useProfileStore();
+  const profilePeso = Number(profile.peso) || 0;
+  const trainingDays = useTrainingStore((s) =>
+    selectTrainingDaysForWeek(s, s.activeWeek, { bodyweight: profilePeso })
+  );
   const currentGym = useUIStore((s) => s.currentGym);
   const setCurrentGym = useUIStore((s) => s.setCurrentGym);
 
