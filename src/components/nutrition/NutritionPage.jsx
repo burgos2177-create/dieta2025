@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import Card from '../ui/Card.jsx';
 import MacroBar from '../ui/MacroBar.jsx';
 import DaySelector from '../dashboard/DaySelector.jsx';
+import WeekNavigator from './WeekNavigator.jsx';
 import AddFoodModal from './AddFoodModal.jsx';
 import MealFormModal from './MealFormModal.jsx';
 import SavePresetModal from './SavePresetModal.jsx';
 import ApplyPresetModal from './ApplyPresetModal.jsx';
 import PresetsManagerModal from './PresetsManagerModal.jsx';
-import { useNutritionStore } from '../../store/useNutritionStore.js';
+import { useNutritionStore, selectDayPlan, isDaySnapshot } from '../../store/useNutritionStore.js';
 import { useFoodStore } from '../../store/useFoodStore.js';
 import { useProfileStore } from '../../store/useProfileStore.js';
 import { DAYS } from '../../lib/constants.js';
@@ -15,18 +16,29 @@ import {
   calcTMB, calcTDEE, kcalForDay, macrosForKcal, dayType,
   sumEntries, computeFoodMacros, MICRO_TARGETS,
 } from '../../lib/calculators.js';
+import { weekDates } from '../../lib/dates.js';
 import { buildNutritionPrintHTML } from '../../lib/printNutrition.js';
 import { showToast } from '../ui/Toast.jsx';
 
 export default function NutritionPage() {
   const {
-    plan, meals, presets, activeDay,
-    setActiveDay, addEntry, updateEntry, removeEntry,
+    weeks, template, meals, presets, activeWeek, activeDay,
+    setActiveWeek, setActiveDay,
+    addEntry, updateEntry, removeEntry,
     addMeal, updateMeal, removeMeal, moveMeal,
     savePreset, removePreset, renamePreset, applyPreset,
+    resetDayToTemplate, saveDayAsTemplate,
   } = useNutritionStore();
   const foods = useFoodStore((s) => s.foods);
   const p = useProfileStore();
+
+  const dayPlan = useNutritionStore((s) => selectDayPlan(s, s.activeWeek, s.activeDay));
+  const isSnapshot = useNutritionStore((s) => isDaySnapshot(s, s.activeWeek, s.activeDay));
+  const snapshotDays = useMemo(
+    () => Object.keys(weeks?.[activeWeek] || {}).map(Number),
+    [weeks, activeWeek]
+  );
+  const activeDate = useMemo(() => weekDates(activeWeek)[activeDay], [activeWeek, activeDay]);
 
   const [modalMeal, setModalMeal] = useState(null);
   const [openMeals, setOpenMeals] = useState({});
@@ -45,7 +57,6 @@ export default function NutritionPage() {
     return { kcal, ...m };
   }, [p, activeDay]);
 
-  const dayPlan = plan[activeDay] || {};
   const totals = useMemo(() => {
     const all = meals.flatMap((m) => dayPlan[m.id] || []);
     return sumEntries(all, foodsById);
@@ -67,13 +78,21 @@ export default function NutritionPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="font-display text-3xl tracking-wider">NUTRICIÓN</h1>
-          <p className="text-muted text-sm">Plan diario por tiempos de comida · {DAYS[activeDay].name}</p>
+          <p className="text-muted text-sm">
+            {DAYS[activeDay].name} · {activeDate.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}
+            {isSnapshot ? (
+              <span className="ml-2 text-accent">· registro propio</span>
+            ) : (
+              <span className="ml-2 text-muted/60">· plantilla</span>
+            )}
+          </p>
         </div>
         <button
           onClick={() => {
             const html = buildNutritionPrintHTML({
               profile: p,
               day: DAYS[activeDay],
+              date: activeDate,
               dayType: dayType(activeDay),
               targets,
               totals,
@@ -101,7 +120,54 @@ export default function NutritionPage() {
         </button>
       </div>
 
-      <DaySelector active={activeDay} onChange={setActiveDay} />
+      <WeekNavigator
+        activeWeek={activeWeek}
+        onChange={setActiveWeek}
+        snapshotCount={snapshotDays.length}
+      />
+
+      <DaySelector
+        active={activeDay}
+        onChange={setActiveDay}
+        weekKey={activeWeek}
+        snapshotDays={snapshotDays}
+      />
+
+      {/* Snapshot actions */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {isSnapshot ? (
+          <>
+            <button
+              onClick={() => {
+                if (confirm(`¿Eliminar el registro de este día y volver a la plantilla?`)) {
+                  resetDayToTemplate(activeWeek, activeDay);
+                  showToast('Registro borrado, vuelve a plantilla');
+                }
+              }}
+              className="px-3 py-1.5 rounded-md border border-border text-muted hover:text-white hover:border-white/20 transition"
+              title="Borrar el snapshot de este día y volver a la plantilla"
+            >
+              ↺ Volver a plantilla
+            </button>
+            <button
+              onClick={() => {
+                if (confirm(`¿Guardar el plan de hoy como nueva plantilla? Esto reemplazará la plantilla del ${DAYS[activeDay].name}.`)) {
+                  saveDayAsTemplate(activeWeek, activeDay);
+                  showToast('Plantilla actualizada', 'ok');
+                }
+              }}
+              className="px-3 py-1.5 rounded-md border border-border text-muted hover:text-white hover:border-white/20 transition"
+              title="Guardar el plan actual como plantilla para todas las semanas futuras"
+            >
+              💾 Guardar como plantilla
+            </button>
+          </>
+        ) : (
+          <span className="text-muted/70 self-center">
+            Cualquier cambio creará un registro propio para este día.
+          </span>
+        )}
+      </div>
 
       {/* Macro header */}
       <Card>

@@ -44,6 +44,7 @@ const DAY_TYPE_LABEL = {
 export function buildNutritionPrintHTML({
   profile,
   day,           // { name, label, type, workout }
+  date,          // Date object for the day being printed (optional)
   dayType,       // 'high' | 'low' | 'normo'
   targets,       // { kcal, protG, carbG, lipG }
   totals,        // sum from sumEntries (incl micros)
@@ -52,11 +53,11 @@ export function buildNutritionPrintHTML({
   foodsById,
   micros,        // MICRO_TARGETS
 }) {
-  const today = new Date();
-  const dateStr = today.toLocaleDateString('es-MX', {
+  const printDate = date ? new Date(date) : new Date();
+  const dateStr = printDate.toLocaleDateString('es-MX', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
   });
-  const genStr = today.toLocaleString('es-MX');
+  const genStr = new Date().toLocaleString('es-MX');
 
   const typeLabel = DAY_TYPE_LABEL[dayType] || '';
 
