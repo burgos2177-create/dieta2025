@@ -5,23 +5,23 @@ import { useTrainingStore } from '../../store/useTrainingStore.js';
 
 const EMPTY = { name: '', tech: '', muscle: 'CUAD', reps: 10, sets: 3, weight: 0 };
 
-export default function AddExerciseModal({ open, onClose, onSave, dayIdx, initial }) {
+export default function AddExerciseModal({ open, onClose, onSave, weekday, initial }) {
   const library = useTrainingStore((s) => s.library);
   const addToLibrary = useTrainingStore((s) => s.addToLibrary);
 
   const [form, setForm] = useState(EMPTY);
-  const [day, setDay] = useState(dayIdx ?? 0);
+  const [day, setDay] = useState(weekday ?? 0);
   const [libSearch, setLibSearch] = useState('');
-  const [askLib, setAskLib] = useState(false); // mostrar prompt "¿agregar a biblioteca?"
+  const [askLib, setAskLib] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(initial ? { ...initial } : { ...EMPTY });
-      setDay(dayIdx ?? 0);
+      setDay(weekday ?? 0);
       setLibSearch('');
       setAskLib(false);
     }
-  }, [open, initial, dayIdx]);
+  }, [open, initial, weekday]);
 
   const upd = (k, v) => setForm((s) => ({ ...s, [k]: v }));
 
@@ -89,8 +89,8 @@ export default function AddExerciseModal({ open, onClose, onSave, dayIdx, initia
           {/* Día */}
           <Field label="Día">
             <select value={day} onChange={(e) => setDay(Number(e.target.value))} disabled={!!initial}>
-              {TR_DAYS_CONFIG.map((d, i) => (
-                <option key={i} value={i}>{d.label} · {d.focus}</option>
+              {TR_DAYS_CONFIG.map((d) => (
+                <option key={d.weekday} value={d.weekday}>{d.label} · {d.focus}</option>
               ))}
             </select>
           </Field>

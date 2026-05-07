@@ -6,7 +6,7 @@ import KcalRing from './KcalRing.jsx';
 import DaySelector from './DaySelector.jsx';
 import { useProfileStore } from '../../store/useProfileStore.js';
 import { useNutritionStore } from '../../store/useNutritionStore.js';
-import { useTrainingStore } from '../../store/useTrainingStore.js';
+import { useTrainingStore, selectTrainingDay } from '../../store/useTrainingStore.js';
 import { DAYS, TR_DAYS_CONFIG } from '../../lib/constants.js';
 import {
   calcTMB, calcTDEE, calcIMC, kcalForDay, weeklyAvg,
@@ -17,7 +17,7 @@ export default function Dashboard() {
   const p = useProfileStore();
   const activeDay = useNutritionStore((s) => s.activeDay);
   const setActiveDay = useNutritionStore((s) => s.setActiveDay);
-  const trainingDays = useTrainingStore((s) => s.days);
+  const trainingDay = useTrainingStore((s) => selectTrainingDay(s, s.activeWeek, activeDay));
 
   const d = useMemo(() => {
     const tmb  = calcTMB(p.sexo, p.peso, p.altura, p.edad);
@@ -40,9 +40,7 @@ export default function Dashboard() {
   const water = recommendedWater(p.peso).toFixed(2);
 
   // Today's training, if it matches the active day
-  const trainingIdx = { 0: 0, 2: 1, 4: 2 }[activeDay];
-  const trainingDay = trainingIdx != null ? trainingDays[trainingIdx] : null;
-  const trainingCfg = trainingIdx != null ? TR_DAYS_CONFIG[trainingIdx] : null;
+  const trainingCfg = TR_DAYS_CONFIG.find((c) => c.weekday === activeDay) || null;
 
   return (
     <div className="space-y-5">

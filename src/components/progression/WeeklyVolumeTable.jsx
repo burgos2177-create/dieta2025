@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import Card from '../ui/Card.jsx';
 import DevBadge from '../ui/DevBadge.jsx';
-import { useTrainingStore } from '../../store/useTrainingStore.js';
+import { useTrainingStore, selectTrainingDaysForWeek } from '../../store/useTrainingStore.js';
 import { VOLUME_ZONES, getWeeklySetsByMuscle, getVolumeZone } from '../../lib/volumeZones.js';
 import { MUSCLE_LABELS } from '../../lib/constants.js';
 
 export default function WeeklyVolumeTable() {
-  const days = useTrainingStore((s) => s.days);
+  const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
+  const days = useMemo(() => trainingDays.map((d) => d.day), [trainingDays]);
   const totals = useMemo(() => getWeeklySetsByMuscle(days), [days]);
   const muscles = Object.keys(VOLUME_ZONES);
   return (

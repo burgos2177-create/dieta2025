@@ -2,18 +2,19 @@ import { useMemo, useState } from 'react';
 import Card from '../ui/Card.jsx';
 import DevBadge from '../ui/DevBadge.jsx';
 import LogDetailModal from './LogDetailModal.jsx';
-import { useTrainingStore } from '../../store/useTrainingStore.js';
+import { useTrainingStore, selectTrainingDaysForWeek } from '../../store/useTrainingStore.js';
 import { MUSCLE_LABELS, MUSCLE_COLORS } from '../../lib/constants.js';
 import { getVolumeZone, getWeeklySetsByMuscle } from '../../lib/volumeZones.js';
 
 export default function LogList() {
-  const days = useTrainingStore((s) => s.days);
+  const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
   const library = useTrainingStore((s) => s.library);
   const log = useTrainingStore((s) => s.log);
   const [q, setQ] = useState('');
   const [muscleFilter, setMuscleFilter] = useState('all');
   const [selected, setSelected] = useState(null);
 
+  const days = useMemo(() => trainingDays.map((d) => d.day), [trainingDays]);
   const weeklySets = useMemo(() => getWeeklySetsByMuscle(days), [days]);
 
   // Muestra todos los ejercicios de la biblioteca — incluso los rotados fuera de un día

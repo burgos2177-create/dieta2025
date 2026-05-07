@@ -10,7 +10,7 @@ function parseWeight(raw) {
   return s === '' ? 0 : parseFloat(s) || 0;
 }
 
-export default function ExerciseRow({ dayIdx, exIdx, ex, onEdit, onOpenLog, isFirst, isLast }) {
+export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isFirst, isLast }) {
   const updateExercise = useTrainingStore((s) => s.updateExercise);
   const deleteExercise = useTrainingStore((s) => s.deleteExercise);
   const reorderExercise = useTrainingStore((s) => s.reorderExercise);
@@ -46,9 +46,9 @@ export default function ExerciseRow({ dayIdx, exIdx, ex, onEdit, onOpenLog, isFi
     const sets = Number(local.sets) || 0;
     const newVol = reps * sets * kg;
     const today = new Date().toISOString().slice(0, 10);
-    updateExercise(dayIdx, exIdx, 'reps', reps);
-    updateExercise(dayIdx, exIdx, 'sets', sets);
-    updateExercise(dayIdx, exIdx, 'weight', kg);
+    updateExercise(weekday, exIdx, 'reps', reps);
+    updateExercise(weekday, exIdx, 'sets', sets);
+    updateExercise(weekday, exIdx, 'weight', kg);
     appendLog(ex.id, { date: today, reps, sets, weight: kg, vol: newVol });
     setLocal({ reps, sets, weight: kg });
     setWeightRaw(String(kg));
@@ -104,13 +104,13 @@ export default function ExerciseRow({ dayIdx, exIdx, ex, onEdit, onOpenLog, isFi
       <td className={`py-2 px-2 font-mono text-xs text-right w-16 ${deltaTone}`}>{deltaStr}</td>
       <td className="py-2 px-1 text-right whitespace-nowrap">
         <button
-          onClick={() => !isFirst && reorderExercise(dayIdx, exIdx, exIdx - 1)}
+          onClick={() => !isFirst && reorderExercise(weekday, exIdx, exIdx - 1)}
           disabled={isFirst}
           className="text-muted hover:text-accent px-1 disabled:opacity-20 disabled:cursor-default"
           title="Subir"
         >↑</button>
         <button
-          onClick={() => !isLast && reorderExercise(dayIdx, exIdx, exIdx + 1)}
+          onClick={() => !isLast && reorderExercise(weekday, exIdx, exIdx + 1)}
           disabled={isLast}
           className="text-muted hover:text-accent px-1 disabled:opacity-20 disabled:cursor-default"
           title="Bajar"
@@ -125,7 +125,7 @@ export default function ExerciseRow({ dayIdx, exIdx, ex, onEdit, onOpenLog, isFi
         <button
           onClick={() => {
             if (confirm(`¿Quitar "${ex.name}" de esta sesión?\n\nSu historial en la bitácora se conserva.`))
-              deleteExercise(dayIdx, exIdx);
+              deleteExercise(weekday, exIdx);
           }}
           className="text-muted hover:text-bad px-1"
           title="Quitar de esta sesión"

@@ -54,10 +54,15 @@ export const MUSCLE_COLORS = {
 // TRAINING DAYS CONFIG
 // ==============================
 export const TR_DAYS_CONFIG = [
-  { label: 'LUNES',     focus: 'Pierna',                              color: 'cyan'   },
-  { label: 'MIÉRCOLES', focus: 'Jalón / Espalda + Bícep',             color: 'green'  },
-  { label: 'VIERNES',   focus: 'Empuje: Pecho + Hombro + Trícep',     color: 'yellow' },
+  { weekday: 0, label: 'LUNES',     focus: 'Pierna',                              color: 'cyan'   },
+  { weekday: 2, label: 'MIÉRCOLES', focus: 'Jalón / Espalda + Bícep',             color: 'green'  },
+  { weekday: 4, label: 'VIERNES',   focus: 'Empuje: Pecho + Hombro + Trícep',     color: 'yellow' },
 ];
+
+/** Map: weekday index (0=Mon..6=Sun) → TR_DAYS_CONFIG entry, or null if not a training day. */
+export function trCfgByWeekday(weekday) {
+  return TR_DAYS_CONFIG.find((c) => c.weekday === weekday) || null;
+}
 
 // ==============================
 // SEED — EXERCISE LIBRARY (todos los ejercicios conocidos)
