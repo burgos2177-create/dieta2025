@@ -31,6 +31,33 @@ function migrateLegacy(state) {
   }
 }
 
+/** Returns the *theoretical* / planned day for (weekKey, weekday), skipping
+ *  any snapshot. Used for the 'view planned' toggle and reset-to-planned. */
+export function selectTheoreticalDay(state, weekKey, weekday) {
+  const info = getMesoInfoForWeek(state.mesocycles, state.activeMesocycleId, weekKey);
+  if (info?.meso?.routines?.[weekday]?.exercises?.length > 0) {
+    const exs = info.meso.routines[weekday].exercises;
+    const weekIdx = info.weekNumber - 1;
+    return {
+      exercises: exs.map((ex) => {
+        const wk = ex.weeks?.[weekIdx] || ex.weeks?.[0] || {};
+        return {
+          id: ex.id,
+          name: ex.name,
+          tech: ex.tech || '',
+          muscle: ex.muscle,
+          equipment: ex.equipment || 'manual',
+          equipmentData: wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 },
+          reps: Number(wk.reps) || 0,
+          sets: Number(wk.sets) || 0,
+          weight: Number(wk.weight) || 0,
+        };
+      }),
+    };
+  }
+  return state.template?.[weekday] || null;
+}
+
 /** Resolve a training day for (weekKey, weekday):
  *  1. Snapshot (manual edit) wins.
  *  2. Active mesocycle's routine for this (weekday, week-in-meso) if defined.
@@ -70,10 +97,12 @@ export function selectTrainingDaysForWeek(state, weekKey) {
     const day = selectTrainingDay(state, weekKey, cfg.weekday);
     let status = 'planned';
     if (snap) status = snap.status === 'closed' ? 'closed' : 'open';
+    const theoretical = selectTheoreticalDay(state, weekKey, cfg.weekday);
     return {
       weekday: cfg.weekday,
       cfg,
       day,
+      theoretical,
       isSnapshot: !!snap,
       status,
       kcalBurned: snap?.kcalBurned ?? null,
@@ -159,33 +188,19 @@ export const useTrainingStore = create(
       setActiveWeek: (key) => set({ activeWeek: key }),
       setActiveDay: (idx) => set({ activeDay: idx }),
 
-      // ── Exercise mutators (write to active week's snapshot) ──
+      // ── Exercise mutators ──
+      // NOTE: log entries are NOT created on edits. Only closing the day
+      // entry appends to the bitacora; reopening removes them. This ensures
+      // the bitacora only contains confirmed/completed sessions.
       updateExercise: (weekday, exIdx, field, value) =>
-        set((s) => {
-          const weeks = mutateDay(s, s.activeWeek, weekday, (day) => {
+        set((s) => ({
+          weeks: mutateDay(s, s.activeWeek, weekday, (day) => {
             day.exercises = day.exercises.map((e, ei) =>
               ei === exIdx ? { ...e, [field]: value } : e
             );
-          });
-          // Keep the existing auto-log behavior
-          const ex = weeks[s.activeWeek][weekday].exercises[exIdx];
-          const vol = (Number(ex.reps) || 0) * (Number(ex.sets) || 0) * (Number(ex.weight) || 0);
-          const log = { ...s.log };
-          const list = log[ex.id] || [];
-          const today = new Date().toISOString().slice(0, 10);
-          const lastSameDay = [...list].reverse().find((l) => l.date === today);
-          if (!lastSameDay || Math.abs(lastSameDay.vol - vol) > 0.1) {
-            log[ex.id] = [
-              ...list,
-              { date: today, reps: Number(ex.reps) || 0, sets: Number(ex.sets) || 0, weight: Number(ex.weight) || 0, vol },
-            ];
-          }
-          return { weeks, log };
-        }),
+          }),
+        })),
 
-      /** Apply a patch to an exercise WITHOUT auto-logging. Used for live edits
-       *  (e.g. switching equipment) that should persist immediately so the
-       *  preset-match badge updates, but don't deserve a log entry. */
       updateExerciseFieldsNoLog: (weekday, exIdx, patch) =>
         set((s) => ({
           weeks: mutateDay(s, s.activeWeek, weekday, (day) => {
@@ -195,28 +210,14 @@ export const useTrainingStore = create(
           }),
         })),
 
-      /** Apply an arbitrary patch to an exercise (auto-logs once). */
       updateExerciseFields: (weekday, exIdx, patch) =>
-        set((s) => {
-          const weeks = mutateDay(s, s.activeWeek, weekday, (day) => {
+        set((s) => ({
+          weeks: mutateDay(s, s.activeWeek, weekday, (day) => {
             day.exercises = day.exercises.map((e, ei) =>
               ei === exIdx ? { ...e, ...patch } : e
             );
-          });
-          const ex = weeks[s.activeWeek][weekday].exercises[exIdx];
-          const vol = (Number(ex.reps) || 0) * (Number(ex.sets) || 0) * (Number(ex.weight) || 0);
-          const log = { ...s.log };
-          const list = log[ex.id] || [];
-          const today = new Date().toISOString().slice(0, 10);
-          const lastSameDay = [...list].reverse().find((l) => l.date === today);
-          if (!lastSameDay || Math.abs(lastSameDay.vol - vol) > 0.1) {
-            log[ex.id] = [
-              ...list,
-              { date: today, reps: Number(ex.reps) || 0, sets: Number(ex.sets) || 0, weight: Number(ex.weight) || 0, vol },
-            ];
-          }
-          return { weeks, log };
-        }),
+          }),
+        })),
 
       addExercise: (weekday, exercise) =>
         set((s) => {
@@ -285,11 +286,29 @@ export const useTrainingStore = create(
           weeks[weekKey] = week;
           return { weeks };
         }),
-      /** Close a day entry, optionally with kcal burned. */
+      /** Close a day entry, optionally with kcal burned. Appends one log entry
+       *  per exercise tagged with sessionKey (weekKey_weekday) so we can
+       *  surgically remove them on reopen. */
       closeDayEntry: (weekKey, weekday, kcalBurned) =>
         set((s) => {
           const day = s.weeks?.[weekKey]?.[weekday];
           if (!day) return {};
+          const sessionKey = `${weekKey}_${weekday}`;
+          // Drop any prior entries from this session (idempotent re-close).
+          const log = { ...s.log };
+          for (const exId of Object.keys(log)) {
+            log[exId] = (log[exId] || []).filter((e) => e.sessionKey !== sessionKey);
+          }
+          // Append fresh entries based on the snapshot's current values.
+          const today = new Date().toISOString().slice(0, 10);
+          for (const ex of (day.exercises || [])) {
+            const reps = Number(ex.reps) || 0;
+            const sets = Number(ex.sets) || 0;
+            const weight = Number(ex.weight) || 0;
+            const vol = reps * sets * weight;
+            const entry = { date: today, reps, sets, weight, vol, sessionKey };
+            log[ex.id] = [...(log[ex.id] || []), entry];
+          }
           const updated = {
             ...day,
             status: 'closed',
@@ -298,18 +317,54 @@ export const useTrainingStore = create(
           };
           const weeks = { ...s.weeks };
           weeks[weekKey] = { ...weeks[weekKey], [weekday]: updated };
-          return { weeks };
+          return { weeks, log };
         }),
-      /** Re-open a closed day entry. */
+      /** Re-open a closed day entry. Removes all log entries tagged with this
+       *  session so the bitacora only counts confirmed (closed) data. */
       reopenDayEntry: (weekKey, weekday) =>
         set((s) => {
           const day = s.weeks?.[weekKey]?.[weekday];
           if (!day) return {};
+          const sessionKey = `${weekKey}_${weekday}`;
+          const log = { ...s.log };
+          for (const exId of Object.keys(log)) {
+            log[exId] = (log[exId] || []).filter((e) => e.sessionKey !== sessionKey);
+          }
           const { kcalBurned: _kc, closedAt: _ca, ...rest } = day;
           const updated = { ...rest, status: 'open' };
           const weeks = { ...s.weeks };
           weeks[weekKey] = { ...weeks[weekKey], [weekday]: updated };
-          return { weeks };
+          return { weeks, log };
+        }),
+      /** Replace the snapshot's exercises with the planned (theoretical) values
+       *  while keeping status='open'. Useful to discard mid-session edits and
+       *  start fresh from the meso routine without losing the open state. */
+      resetDayToPlanned: (weekKey, weekday) =>
+        set((s) => {
+          const planned = selectTheoreticalDay(s, weekKey, weekday);
+          if (!planned) return {};
+          const exercises = (planned.exercises || []).map((e) => ({
+            ...e,
+            equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
+          }));
+          const existing = s.weeks?.[weekKey]?.[weekday];
+          const day = {
+            ...(existing || {}),
+            exercises,
+            status: 'open',
+            openedAt: existing?.openedAt || Date.now(),
+            kcalBurned: undefined,
+            closedAt: undefined,
+          };
+          const weeks = { ...(s.weeks || {}) };
+          weeks[weekKey] = { ...(weeks[weekKey] || {}), [weekday]: day };
+          // If the day was previously closed, also clean its log entries.
+          const sessionKey = `${weekKey}_${weekday}`;
+          const log = { ...s.log };
+          for (const exId of Object.keys(log)) {
+            log[exId] = (log[exId] || []).filter((e) => e.sessionKey !== sessionKey);
+          }
+          return { weeks, log };
         }),
 
       // Drop a snapshot — day reverts to template

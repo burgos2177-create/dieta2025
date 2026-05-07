@@ -12,7 +12,6 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
   const updateExerciseFieldsNoLog = useTrainingStore((s) => s.updateExerciseFieldsNoLog);
   const deleteExercise = useTrainingStore((s) => s.deleteExercise);
   const reorderExercise = useTrainingStore((s) => s.reorderExercise);
-  const appendLog = useTrainingStore((s) => s.appendLog);
 
   // Compute theoretical (planned) and previous executed values for the deltas.
   const theoretical = useTrainingStore((s) =>
@@ -82,17 +81,16 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
   };
 
   const register = () => {
+    // Persist local edits to the snapshot. Log entries get created only when
+    // the day is closed — keeps the bitacora restricted to confirmed sessions.
     const reps = Number(local.reps) || 0;
     const sets = Number(local.sets) || 0;
     const kg = Number(local.weight) || 0;
-    const newVol = reps * sets * kg;
-    const today = new Date().toISOString().slice(0, 10);
     updateExerciseFields(weekday, exIdx, {
       reps, sets, weight: kg,
       equipment: local.equipment,
       equipmentData: local.equipmentData,
     });
-    appendLog(ex.id, { date: today, reps, sets, weight: kg, vol: newVol });
     setDirty(false);
   };
 
@@ -171,7 +169,7 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
             >↓</button>
             <button
               onClick={register}
-              title="Registrar en bitácora"
+              title="Guardar valores · la entrada en bitácora se crea al cerrar el entrenamiento"
               className={`px-1 text-xs font-bold transition ${dirty ? 'text-accent hover:brightness-110' : 'text-muted hover:text-accent'}`}
             >✓</button>
           </>

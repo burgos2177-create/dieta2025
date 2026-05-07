@@ -29,7 +29,7 @@ export default function TrainingPage() {
     addMesoRoutineExercise, removeMesoRoutineExercise, updateMesoRoutineExercise,
     updateMesoRoutineWeek, moveMesoRoutineExercise, importMesoRoutineFromTemplate,
     fillMesoRoutineWeeksFrom, setMesoRoutineDayExercises,
-    openDayEntry, closeDayEntry, reopenDayEntry,
+    openDayEntry, closeDayEntry, reopenDayEntry, resetDayToPlanned,
     saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, overwriteWorkoutPreset, duplicateWorkoutPreset, regenerateWorkoutPresetsFromMeso,
   } = useTrainingStore();
 
@@ -166,12 +166,13 @@ export default function TrainingPage() {
       <VolumeDashboard days={trainingDays.map((d) => d.day)} />
 
       <div className="space-y-4">
-        {trainingDays.map(({ weekday, cfg, day, isSnapshot: snap, status, kcalBurned, closedAt }) => (
+        {trainingDays.map(({ weekday, cfg, day, theoretical, isSnapshot: snap, status, kcalBurned, closedAt }) => (
           <WorkoutDayCard
             key={weekday}
             weekday={weekday}
             cfg={cfg}
             day={day}
+            theoretical={theoretical}
             isSnapshot={snap}
             status={status}
             kcalBurned={kcalBurned}
@@ -203,9 +204,18 @@ export default function TrainingPage() {
               setClosingFor({ weekday, label: cfg.label, totalVol });
             }}
             onReopenEntry={() => {
-              if (confirm(`¿Reabrir el entrenamiento de ${cfg.label}? Podrás volver a editarlo.`)) {
+              if (confirm(`¿Reabrir el entrenamiento de ${cfg.label}?\n\nSe borrará la entrada de la bitácora correspondiente a esta sesión.`)) {
                 reopenDayEntry(activeWeek, weekday);
                 showToast('Entrenamiento reabierto');
+              }
+            }}
+            onResetToPlanned={() => {
+              const msg = status === 'closed'
+                ? `¿Resetear ${cfg.label} a los valores del plan teórico?\n\nLa entrada de la bitácora también se borrará.`
+                : `¿Resetear ${cfg.label} a los valores del plan teórico? Se descartan tus ediciones de esta sesión.`;
+              if (confirm(msg)) {
+                resetDayToPlanned(activeWeek, weekday);
+                showToast('Reseteado al plan teórico');
               }
             }}
           />

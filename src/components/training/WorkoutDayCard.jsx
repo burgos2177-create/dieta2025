@@ -4,14 +4,17 @@ import Pill from '../ui/Pill.jsx';
 import ExerciseRow from './ExerciseRow.jsx';
 
 export default function WorkoutDayCard({
-  weekday, cfg, day, isSnapshot, status, kcalBurned, closedAt,
+  weekday, cfg, day, theoretical, isSnapshot, status, kcalBurned, closedAt,
   onEditExercise, onOpenLog, onAddExercise,
-  onResetDay, onSaveAsTemplate,
+  onResetDay, onResetToPlanned, onSaveAsTemplate,
   onOpenEntry, onCloseEntry, onReopenEntry,
   weekKey,
 }) {
   const [open, setOpen] = useState(true);
-  const totalVol = (day?.exercises || []).reduce(
+  const [viewPlanned, setViewPlanned] = useState(false);
+  // What we actually render: planned (visual-only toggle) or the day's snapshot/plan.
+  const renderedDay = viewPlanned && theoretical ? theoretical : day;
+  const totalVol = (renderedDay?.exercises || []).reduce(
     (a, e) => a + (Number(e.reps) || 0) * (Number(e.sets) || 0) * (Number(e.weight) || 0),
     0
   );
@@ -61,9 +64,14 @@ export default function WorkoutDayCard({
                   Plan teórico
                 </span>
               )}
+              {viewPlanned && !isPlanned && (
+                <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-warn/40 bg-warn/10 text-warn">
+                  👁 Vista plan
+                </span>
+              )}
             </div>
             <div className="text-xs text-muted">
-              {day?.exercises?.length || 0} ejercicios
+              {renderedDay?.exercises?.length || 0} ejercicios
               {isClosed && kcalBurned > 0 && (
                 <span className="ml-2 text-accent">· {kcalBurned} kcal</span>
               )}
@@ -78,11 +86,29 @@ export default function WorkoutDayCard({
             <div className="font-mono text-accent">{totalVol.toFixed(0)} kg vol</div>
             <div className="text-[0.65rem] text-muted">{open ? '▾' : '▸'}</div>
           </div>
+          {!isPlanned && theoretical && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setViewPlanned((v) => !v)}
+                title={viewPlanned ? 'Volver a la vista normal' : 'Ver el plan teórico (visual, no toca tu registro)'}
+                className={`px-2 py-1 text-xs transition ${viewPlanned ? 'text-warn' : 'text-muted hover:text-warn'}`}
+              >
+                👁
+              </button>
+            </div>
+          )}
           {isOpenStatus && (
             <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
               <button
+                onClick={onResetToPlanned}
+                title="Resetear los valores del entrenamiento al plan teórico (mantiene la entrada abierta)"
+                className="text-muted hover:text-warn px-2 py-1 text-xs"
+              >
+                🔄
+              </button>
+              <button
                 onClick={onResetDay}
-                title="Borrar registro y volver al plan teórico"
+                title="Descartar la entrada y volver al plan teórico (borra el registro de este día)"
                 className="text-muted hover:text-bad px-2 py-1 text-xs"
               >
                 ↺
@@ -97,10 +123,17 @@ export default function WorkoutDayCard({
             </div>
           )}
           {isClosed && (
-            <div onClick={(e) => e.stopPropagation()}>
+            <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
+              <button
+                onClick={onResetToPlanned}
+                title="Resetear los valores al plan teórico (también borra esta entrada de la bitácora)"
+                className="text-muted hover:text-warn px-2 py-1 text-xs"
+              >
+                🔄
+              </button>
               <button
                 onClick={onReopenEntry}
-                title="Reabrir el entrenamiento"
+                title="Reabrir el entrenamiento (también borra esta entrada de la bitácora)"
                 className="text-muted hover:text-accent px-2 py-1 text-xs"
               >
                 🔓
@@ -136,6 +169,11 @@ export default function WorkoutDayCard({
             </div>
           )}
 
+          {viewPlanned && !isPlanned && (
+            <div className="px-4 py-2 bg-warn/5 border-b border-warn/30 text-xs text-warn">
+              👁 Mostrando el plan teórico (solo visual). Tus valores reales del entrenamiento se conservan en el fondo.
+            </div>
+          )}
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[0.65rem] uppercase tracking-wider text-muted">
@@ -151,15 +189,15 @@ export default function WorkoutDayCard({
               </tr>
             </thead>
             <tbody>
-              {(day?.exercises || []).map((ex, ei) => (
+              {(renderedDay?.exercises || []).map((ex, ei) => (
                 <ExerciseRow
-                  key={ex.id}
+                  key={`${ex.id}_${viewPlanned ? 'plan' : 'real'}`}
                   weekday={weekday}
                   exIdx={ei}
                   ex={ex}
                   isFirst={ei === 0}
-                  isLast={ei === day.exercises.length - 1}
-                  readOnly={readOnly}
+                  isLast={ei === renderedDay.exercises.length - 1}
+                  readOnly={readOnly || viewPlanned}
                   weekKey={weekKey}
                   onEdit={(e, idx) => onEditExercise?.(weekday, idx, e)}
                   onOpenLog={onOpenLog}
