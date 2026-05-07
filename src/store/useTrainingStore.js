@@ -224,6 +224,27 @@ export const useTrainingStore = create(
         }),
       removeWorkoutPreset: (id) =>
         set((s) => ({ workoutPresets: s.workoutPresets.filter((p) => p.id !== id) })),
+      overwriteWorkoutPreset: (id, { name, exercises }) =>
+        set((s) => ({
+          workoutPresets: s.workoutPresets.map((p) =>
+            p.id !== id ? p : {
+              ...p,
+              name: name ? name.trim() : p.name,
+              exercises: (exercises || []).map((e) => ({
+                id: e.id,
+                name: e.name,
+                tech: e.tech || '',
+                muscle: e.muscle,
+                reps: Number(e.reps) || 0,
+                sets: Number(e.sets) || 0,
+                weight: Number(e.weight) || 0,
+                equipment: e.equipment || 'manual',
+                equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
+              })),
+              updatedAt: Date.now(),
+            }
+          ),
+        })),
       renameWorkoutPreset: (id, name) =>
         set((s) => ({
           workoutPresets: s.workoutPresets.map((p) => (p.id === id ? { ...p, name: (name || '').trim() || p.name } : p)),
@@ -322,6 +343,28 @@ export const useTrainingStore = create(
     }
   )
 );
+
+/** True when two exercise lists are equivalent (same ids, reps, sets, kg, equipment). */
+export function exercisesEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i], y = b[i];
+    if (!x || !y) return false;
+    if (x.id !== y.id) return false;
+    if ((Number(x.reps) || 0) !== (Number(y.reps) || 0)) return false;
+    if ((Number(x.sets) || 0) !== (Number(y.sets) || 0)) return false;
+    if (Math.abs((Number(x.weight) || 0) - (Number(y.weight) || 0)) > 0.05) return false;
+    if ((x.equipment || 'manual') !== (y.equipment || 'manual')) return false;
+  }
+  return true;
+}
+
+/** Returns the preset whose exercises match the given list, or null. */
+export function findMatchingWorkoutPreset(presets, exercises) {
+  if (!presets || !exercises) return null;
+  return presets.find((p) => exercisesEqual(p.exercises, exercises)) || null;
+}
 
 /** Re-export for convenience */
 export { getMesoInfoForWeek };

@@ -8,7 +8,7 @@ import ApplyWorkoutPresetModal from './ApplyWorkoutPresetModal.jsx';
 import WorkoutPresetsManagerModal from './WorkoutPresetsManagerModal.jsx';
 import LogDetailModal from '../progression/LogDetailModal.jsx';
 import WeekNavigator from '../nutrition/WeekNavigator.jsx';
-import { useTrainingStore, selectTrainingDaysForWeek, selectTrainingDay } from '../../store/useTrainingStore.js';
+import { useTrainingStore, selectTrainingDaysForWeek, selectTrainingDay, findMatchingWorkoutPreset } from '../../store/useTrainingStore.js';
 import { useNutritionStore } from '../../store/useNutritionStore.js';
 import { useProfileStore } from '../../store/useProfileStore.js';
 import { useUIStore } from '../../store/useUIStore.js';
@@ -25,7 +25,7 @@ export default function TrainingPage() {
     addExercise, updateExercise, updateExerciseFields,
     resetDayToTemplate, saveDayAsTemplate,
     addMesocycle, updateMesocycle, removeMesocycle, setActiveMesocycleId, resetMesoStart,
-    saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset,
+    saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, applyWorkoutPreset, overwriteWorkoutPreset,
   } = useTrainingStore();
 
   const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
@@ -165,6 +165,8 @@ export default function TrainingPage() {
             cfg={cfg}
             day={day}
             isSnapshot={snap}
+            matchingPreset={findMatchingWorkoutPreset(workoutPresets, day?.exercises || [])}
+            hasAnyPresets={workoutPresets.length > 0}
             onAddExercise={openAdd}
             onEditExercise={openEdit}
             onOpenLog={(ex) => setLogEx(ex)}
@@ -211,9 +213,17 @@ export default function TrainingPage() {
         onClose={() => setSavePresetFor(null)}
         exercises={savePresetFor?.exercises}
         dayLabel={savePresetFor?.label}
+        existingPresets={workoutPresets}
+        matchingPresetId={
+          findMatchingWorkoutPreset(workoutPresets, savePresetFor?.exercises || [])?.id || null
+        }
         onSubmit={({ name, exercises }) => {
           saveWorkoutPreset({ name, exercises });
           showToast('Preset de rutina guardado', 'ok');
+        }}
+        onOverwrite={(id, { name, exercises }) => {
+          overwriteWorkoutPreset(id, { name, exercises });
+          showToast('Preset sobrescrito', 'ok');
         }}
       />
 

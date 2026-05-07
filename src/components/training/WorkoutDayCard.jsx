@@ -8,6 +8,8 @@ export default function WorkoutDayCard({
   onEditExercise, onOpenLog, onAddExercise,
   onResetDay, onSaveAsTemplate,
   onApplyPreset, onSavePreset,
+  matchingPreset,   // preset object or null
+  hasAnyPresets,    // true when there's at least 1 preset to compare against
 }) {
   const [open, setOpen] = useState(true);
   const totalVol = (day?.exercises || []).reduce(
@@ -32,7 +34,26 @@ export default function WorkoutDayCard({
         <div className="flex items-center gap-3 min-w-0">
           <Pill tone={tone}>{cfg.label}</Pill>
           <div className="text-left min-w-0">
-            <div className="font-display text-lg text-white tracking-wide truncate">{cfg.focus}</div>
+            <div className="flex items-baseline gap-2 min-w-0">
+              <div className="font-display text-lg text-white tracking-wide truncate">{cfg.focus}</div>
+              {hasAnyPresets && (day?.exercises?.length > 0) && (
+                matchingPreset ? (
+                  <span
+                    className="text-[0.65rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/30 text-accent bg-accent/10 truncate max-w-[12rem]"
+                    title={`Coincide con preset "${matchingPreset.name}"`}
+                  >
+                    📋 {matchingPreset.name}
+                  </span>
+                ) : (
+                  <span
+                    className="text-[0.65rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-warn/30 text-warn bg-warn/10"
+                    title="Esta rutina no coincide con ningún preset guardado"
+                  >
+                    ✦ Rutina nueva
+                  </span>
+                )
+              )}
+            </div>
             <div className="text-xs text-muted">
               {day?.exercises?.length || 0} ejercicios
               {isSnapshot ? (
