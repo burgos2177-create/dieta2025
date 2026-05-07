@@ -181,7 +181,7 @@ export function defaultEquipmentData(equipmentId, currentKg = 0, ctx) {
   return data;
 }
 
-/** Pretty input summary, e.g. "70 lb × lado · ×1" for use in tooltips/PDF. */
+/** Pretty input summary, e.g. "70 lb · ×1" for use in tooltips/PDF. */
 export function formatEquipmentInput(equipmentId, data) {
   const eq = getEquipment(equipmentId);
   return eq.inputs.map((i) => {
@@ -189,4 +189,53 @@ export function formatEquipmentInput(equipmentId, data) {
     if (i.type === 'multiplier') return `×${v ?? 1}`;
     return `${v ?? 0} ${i.unit}`;
   }).join(' · ');
+}
+
+/** Colloquial usage description telling the user *how* to load the equipment.
+ *  Examples:
+ *    smith → "60 lb por lado"
+ *    dumbbell_lb (×2) → "30 lb × 2 mancuernas"
+ *    bodyweight (+5) → "peso corporal + 5 kg" */
+export function formatEquipmentUsage(equipmentId, data) {
+  const d = data || {};
+  switch (equipmentId) {
+    case 'manual':
+      return `${d.kg ?? 0} kg`;
+    case 'smith':
+      return `${d.lbPorLado ?? 0} lb por lado`;
+    case 'olympic_bar':
+      return `${d.lbPorLado ?? 0} lb por lado`;
+    case 'straight_bar':
+      return `${d.lb ?? 0} lb total`;
+    case 'dumbbell_kg': {
+      const m = Number(d.multiplier) || 1;
+      return `${d.kgPerDb ?? 0} kg × ${m} mancuerna${m !== 1 ? 's' : ''}`;
+    }
+    case 'dumbbell_lb': {
+      const m = Number(d.multiplier) || 1;
+      return `${d.lbPerDb ?? 0} lb × ${m} mancuerna${m !== 1 ? 's' : ''}`;
+    }
+    case 'pulley_kg': {
+      const m = Number(d.multiplier) || 1;
+      return `${d.kg ?? 0} kg${m > 1 ? ` × ${m} poleas` : ' en polea'}`;
+    }
+    case 'pulley_lb': {
+      const m = Number(d.multiplier) || 1;
+      return `${d.lb ?? 0} lb${m > 1 ? ` × ${m} poleas` : ' en polea'}`;
+    }
+    case 'machine_kg':
+      return `${d.kg ?? 0} kg en máquina`;
+    case 'machine_lb':
+      return `${d.lb ?? 0} lb en máquina`;
+    case 'medicine_ball':
+      return `pelota ${d.kg ?? 0} kg`;
+    case 'bodyweight': {
+      const e = Number(d.extraKg) || 0;
+      if (e > 0) return `peso corporal + ${e} kg`;
+      if (e < 0) return `peso corporal − ${Math.abs(e)} kg`;
+      return `peso corporal`;
+    }
+    default:
+      return formatEquipmentInput(equipmentId, data);
+  }
 }

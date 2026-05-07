@@ -6,6 +6,7 @@ import {
   findTheoreticalForExercise,
 } from '../../store/useTrainingStore.js';
 import EquipmentWeightInput from './EquipmentWeightInput.jsx';
+import { getEquipment, formatEquipmentUsage } from '../../lib/equipment.js';
 
 export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isFirst, isLast, readOnly = false, weekKey }) {
   const updateExerciseFields = useTrainingStore((s) => s.updateExerciseFields);
@@ -135,8 +136,11 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
       <td className="py-2 px-1 align-top">
         {readOnly ? (
           <div className="text-xs">
-            <div className="text-muted/80 capitalize">{local.equipment}</div>
-            <div className="font-mono text-accent/80">= {(Number(local.weight) || 0).toFixed(2)} kg</div>
+            <div className="text-muted/80">
+              {getEquipment(local.equipment).short}
+              <span className="text-muted/60"> · {formatEquipmentUsage(local.equipment, local.equipmentData)}</span>
+            </div>
+            <div className="font-mono text-accent/80 mt-0.5">= {(Number(local.weight) || 0).toFixed(2)} kg</div>
           </div>
         ) : (
           <EquipmentWeightInput
