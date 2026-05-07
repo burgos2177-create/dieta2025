@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware';
 import { buildSeedNutPlan, MEALS_CONFIG } from '../lib/constants';
 import { cloudLoad, cloudSave } from '../lib/cloudSync';
 import { getMondayKey, todayDayIdx } from '../lib/dates';
+import { dayType } from '../lib/calculators';
+import { getMesoInfoForWeek, materializeMesoDay } from '../lib/mesocycle';
 
 const CLOUD_KEY = 'nutrition';
 const DEFAULT_MEALS = MEALS_CONFIG;
@@ -66,10 +68,19 @@ function cloneDayPlan(day) {
   return out;
 }
 
-/** Get day plan reading from snapshot (weeks) or falling back to template. */
+/** Get day plan reading from snapshot (weeks) → mesocycle → static template. */
 export function selectDayPlan(state, weekKey, dayIdx) {
+  // 1. Manual snapshot wins
   const snap = state.weeks?.[weekKey]?.[dayIdx];
   if (snap) return snap;
+  // 2. Active mesocycle covering this week
+  const info = getMesoInfoForWeek(state.mesocycles, state.activeMesocycleId, weekKey);
+  if (info) {
+    const presetsById = Object.fromEntries((state.presets || []).map((p) => [p.id, p]));
+    const type = dayType(dayIdx);
+    return materializeMesoDay(info.meso, type, state.meals || [], presetsById);
+  }
+  // 3. Static template fallback
   return state.template?.[dayIdx] || {};
 }
 
@@ -104,6 +115,8 @@ export const useNutritionStore = create(
       weeks: {},
       meals: DEFAULT_MEALS,
       presets: [],
+      mesocycles: [],
+      activeMesocycleId: null,
       activeWeek: getMondayKey(new Date()),
       activeDay: todayDayIdx(),
 
@@ -232,25 +245,69 @@ export const useNutritionStore = create(
           };
         }),
 
+      // ── Mesocycles ──
+      addMesocycle: (meso) =>
+        set((s) => ({
+          mesocycles: [...s.mesocycles, meso],
+          activeMesocycleId: meso.id,
+        })),
+      updateMesocycle: (id, patch) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+        })),
+      removeMesocycle: (id) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.filter((m) => m.id !== id),
+          activeMesocycleId: s.activeMesocycleId === id ? null : s.activeMesocycleId,
+        })),
+      setActiveMesocycleId: (id) => set({ activeMesocycleId: id }),
+      /** Reset the start week of a mesocycle to a given Monday key (defaults to current activeWeek). */
+      resetMesoStart: (id, newStartWeek) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) =>
+            m.id === id ? { ...m, startWeek: newStartWeek || s.activeWeek } : m
+          ),
+        })),
+      /** Set the preset for a (dayType, mealId) of a mesocycle. presetId can be null to clear. */
+      setMesoPlan: (id, dayTypeStr, mealId, presetId) =>
+        set((s) => ({
+          mesocycles: s.mesocycles.map((m) => {
+            if (m.id !== id) return m;
+            const plans = { ...(m.plans || { high: {}, low: {}, normo: {} }) };
+            const slot = { ...(plans[dayTypeStr] || {}) };
+            if (presetId == null) delete slot[mealId];
+            else slot[mealId] = presetId;
+            plans[dayTypeStr] = slot;
+            return { ...m, plans };
+          }),
+        })),
+
       resetSeed: () => set({ template: buildSeedNutPlan(), meals: DEFAULT_MEALS, weeks: {} }),
 
       // ── Cloud sync ──
       _initCloud: async () => {
         const data = await cloudLoad(CLOUD_KEY);
         if (data) {
-          // Migrate legacy cloud shape (had `plan` instead of `template`)
           const legacyPlan = data.plan;
           const meals = Array.isArray(data.meals) && data.meals.length ? data.meals : DEFAULT_MEALS;
           const template = ensureDaysShape(data.template || legacyPlan || buildSeedNutPlan(), meals);
           const weeks = ensureWeeks(data.weeks, meals);
           const presets = Array.isArray(data.presets) ? data.presets : [];
-          set({ template, weeks, meals, presets });
+          const mesocycles = Array.isArray(data.mesocycles) ? data.mesocycles : [];
+          const activeMesocycleId = data.activeMesocycleId || null;
+          set({ template, weeks, meals, presets, mesocycles, activeMesocycleId });
         } else {
           const s = get();
-          cloudSave(CLOUD_KEY, { template: s.template, weeks: s.weeks, meals: s.meals, presets: s.presets });
+          cloudSave(CLOUD_KEY, {
+            template: s.template, weeks: s.weeks, meals: s.meals, presets: s.presets,
+            mesocycles: s.mesocycles, activeMesocycleId: s.activeMesocycleId,
+          });
         }
         useNutritionStore.subscribe((s) => {
-          cloudSave(CLOUD_KEY, { template: s.template, weeks: s.weeks, meals: s.meals, presets: s.presets });
+          cloudSave(CLOUD_KEY, {
+            template: s.template, weeks: s.weeks, meals: s.meals, presets: s.presets,
+            mesocycles: s.mesocycles, activeMesocycleId: s.activeMesocycleId,
+          });
         });
       },
     }),
@@ -260,6 +317,8 @@ export const useNutritionStore = create(
         if (!state) return;
         if (!Array.isArray(state.meals) || !state.meals.length) state.meals = DEFAULT_MEALS;
         if (!Array.isArray(state.presets)) state.presets = [];
+        if (!Array.isArray(state.mesocycles)) state.mesocycles = [];
+        if (state.activeMesocycleId === undefined) state.activeMesocycleId = null;
         migrateLegacy(state);
         state.template = ensureDaysShape(state.template || buildSeedNutPlan(), state.meals);
         state.weeks = ensureWeeks(state.weeks, state.meals);

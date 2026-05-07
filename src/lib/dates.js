@@ -72,3 +72,10 @@ export function formatLongDate(date) {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
   });
 }
+
+/** Whole number of weeks from week key A to week key B (B - A). */
+export function weeksBetween(keyA, keyB) {
+  const a = parseKey(keyA).getTime();
+  const b = parseKey(keyB).getTime();
+  return Math.round((b - a) / (7 * MS_DAY));
+}

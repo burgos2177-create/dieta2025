@@ -8,7 +8,9 @@ import MealFormModal from './MealFormModal.jsx';
 import SavePresetModal from './SavePresetModal.jsx';
 import ApplyPresetModal from './ApplyPresetModal.jsx';
 import PresetsManagerModal from './PresetsManagerModal.jsx';
+import MesocycleModal from './MesocycleModal.jsx';
 import { useNutritionStore, selectDayPlan, isDaySnapshot } from '../../store/useNutritionStore.js';
+import { getMesoInfoForWeek } from '../../lib/mesocycle.js';
 import { useFoodStore } from '../../store/useFoodStore.js';
 import { useProfileStore } from '../../store/useProfileStore.js';
 import { DAYS } from '../../lib/constants.js';
@@ -22,12 +24,15 @@ import { showToast } from '../ui/Toast.jsx';
 
 export default function NutritionPage() {
   const {
-    weeks, template, meals, presets, activeWeek, activeDay,
+    weeks, template, meals, presets, mesocycles, activeMesocycleId,
+    activeWeek, activeDay,
     setActiveWeek, setActiveDay,
     addEntry, updateEntry, removeEntry,
     addMeal, updateMeal, removeMeal, moveMeal,
     savePreset, removePreset, renamePreset, applyPreset,
     resetDayToTemplate, saveDayAsTemplate,
+    addMesocycle, updateMesocycle, removeMesocycle,
+    setActiveMesocycleId, resetMesoStart, setMesoPlan,
   } = useNutritionStore();
   const foods = useFoodStore((s) => s.foods);
   const p = useProfileStore();
@@ -46,6 +51,12 @@ export default function NutritionPage() {
   const [savePresetFor, setSavePresetFor] = useState(null); // {mealId, mealLabel, entries}
   const [applyPresetFor, setApplyPresetFor] = useState(null); // {mealId, mealLabel}
   const [presetsOpen, setPresetsOpen] = useState(false);
+  const [mesoOpen, setMesoOpen] = useState(false);
+
+  const mesoInfo = useMemo(
+    () => getMesoInfoForWeek(mesocycles, activeMesocycleId, activeWeek),
+    [mesocycles, activeMesocycleId, activeWeek]
+  );
 
   const foodsById = useMemo(() => Object.fromEntries(foods.map((f) => [f.id, f])), [foods]);
 
@@ -82,6 +93,8 @@ export default function NutritionPage() {
             {DAYS[activeDay].name} · {activeDate.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}
             {isSnapshot ? (
               <span className="ml-2 text-accent">· registro propio</span>
+            ) : mesoInfo ? (
+              <span className="ml-2 text-muted/80">· {mesoInfo.meso.name} · sem {mesoInfo.weekNumber}/{mesoInfo.meso.weeks}</span>
             ) : (
               <span className="ml-2 text-muted/60">· plantilla</span>
             )}
@@ -124,6 +137,8 @@ export default function NutritionPage() {
         activeWeek={activeWeek}
         onChange={setActiveWeek}
         snapshotCount={snapshotDays.length}
+        mesoInfo={mesoInfo}
+        onOpenMesocycles={() => setMesoOpen(true)}
       />
 
       <DaySelector
@@ -443,6 +458,22 @@ export default function NutritionPage() {
           removePreset(id);
           showToast('Preset eliminado');
         }}
+      />
+
+      <MesocycleModal
+        open={mesoOpen}
+        onClose={() => setMesoOpen(false)}
+        mesocycles={mesocycles}
+        activeId={activeMesocycleId}
+        presets={presets}
+        meals={meals}
+        currentWeek={activeWeek}
+        onCreate={(meso) => { addMesocycle(meso); showToast('Mesociclo creado', 'ok'); }}
+        onUpdate={(id, patch) => updateMesocycle(id, patch)}
+        onRemove={(id) => { removeMesocycle(id); showToast('Mesociclo eliminado'); }}
+        onSetActive={(id) => { setActiveMesocycleId(id); showToast(id ? 'Mesociclo activado' : 'Mesociclo desactivado', 'ok'); }}
+        onResetStart={(id, wk) => { resetMesoStart(id, wk); showToast('Inicio reseteado a esta semana', 'ok'); }}
+        onSetPlan={(id, dt, mealId, presetId) => setMesoPlan(id, dt, mealId, presetId)}
       />
     </div>
   );
