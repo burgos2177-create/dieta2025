@@ -184,6 +184,9 @@ function ExerciseRoutineRow({
           const computed = computeWeightKg(ex.equipment || 'manual', data, ctx);
           const vol = vols[weekIdx];
           const delta = weekIdx === 0 ? null : vol - vols[weekIdx - 1];
+          const deltaPct = weekIdx === 0
+            ? null
+            : (vols[weekIdx - 1] > 0 ? (delta / vols[weekIdx - 1]) * 100 : null);
           const phase = mesoPhaseLabel(weekIdx + 1, weeks);
           const updateInput = (key, raw) => {
             const num = raw === '' ? 0 : Number(raw);
@@ -253,9 +256,17 @@ function ExerciseRoutineRow({
                 className={`font-mono whitespace-nowrap w-16 text-right ${
                   delta == null ? 'text-muted/40' : delta > 0 ? 'text-ok' : delta < 0 ? 'text-bad' : 'text-muted'
                 }`}
-                title="Diferencial vs semana anterior"
+                title="Diferencial vs semana anterior (volumen absoluto)"
               >
                 {delta == null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}`}
+              </span>
+              <span
+                className={`font-mono whitespace-nowrap w-16 text-right ${
+                  deltaPct == null ? 'text-muted/40' : deltaPct > 0 ? 'text-ok' : deltaPct < 0 ? 'text-bad' : 'text-muted'
+                }`}
+                title="Diferencial vs semana anterior (%)"
+              >
+                {deltaPct == null ? '—' : `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%`}
               </span>
               <button
                 onClick={() => onFillFrom(weekIdx)}
