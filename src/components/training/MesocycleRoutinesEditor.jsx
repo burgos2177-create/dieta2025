@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Modal from '../ui/Modal.jsx';
+import VolumeBar from './VolumeBar.jsx';
 import { TR_DAYS_CONFIG, MUSCLE_LABELS, MUSCLE_COLORS } from '../../lib/constants.js';
 import { EQUIPMENT_TYPES, getEquipment, computeWeightKg } from '../../lib/equipment.js';
 import { mesoPhaseLabel } from '../../lib/mesocycle.js';
+import { VOLUME_ZONES, getVolumeZone } from '../../lib/volumeZones.js';
 import { useProfileStore } from '../../store/useProfileStore.js';
 
 /** Editor de la rutina del mesociclo: matriz ejercicio × semana. */
@@ -12,11 +14,38 @@ export default function MesocycleRoutinesEditor({
   onMoveExercise, onImportFromTemplate, onFillFromWeek,
 }) {
   const [weekday, setWeekday] = useState(0);
+  const [volumeWeekIdx, setVolumeWeekIdx] = useState(0);
+
+  const N = meso?.weeks || 5;
+  const dayRoutine = meso?.routines?.[weekday];
+  const exercises = dayRoutine?.exercises || [];
+
+  // Compute weekly volume per muscle for the selected week, summed across all
+  // training days of the meso. Then filter to muscles that appear on the
+  // currently selected day.
+  const volumes = useMemo(() => {
+    const totals = {};
+    Object.keys(VOLUME_ZONES).forEach((m) => { totals[m] = 0; });
+    if (!meso) return totals;
+    for (const cfg of TR_DAYS_CONFIG) {
+      const exs = meso.routines?.[cfg.weekday]?.exercises || [];
+      for (const ex of exs) {
+        const wk = ex.weeks?.[volumeWeekIdx] || ex.weeks?.[0] || {};
+        const sets = Number(wk.sets) || 0;
+        if (totals[ex.muscle] == null) totals[ex.muscle] = 0;
+        totals[ex.muscle] += sets;
+      }
+    }
+    return totals;
+  }, [meso, volumeWeekIdx]);
+
+  const dayMuscles = useMemo(() => {
+    const set = new Set();
+    for (const ex of exercises) if (ex.muscle) set.add(ex.muscle);
+    return [...set];
+  }, [exercises]);
 
   if (!meso) return null;
-  const N = meso.weeks || 5;
-  const dayRoutine = meso.routines?.[weekday];
-  const exercises = dayRoutine?.exercises || [];
 
   const newExercise = () => ({
     id: `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
@@ -54,6 +83,40 @@ export default function MesocycleRoutinesEditor({
         <div className="text-xs text-muted">
           Define reps, sets y peso por semana. La sobrecarga se aplica automáticamente al navegar a la semana correspondiente del mesociclo. Si editas algo durante la sesión, se crea un snapshot solo para ese día — la rutina queda intacta.
         </div>
+
+        {/* Volume bars filtered to muscles in the selected day */}
+        {dayMuscles.length > 0 && (
+          <div className="bg-white/[0.02] border border-border rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="text-[0.65rem] uppercase tracking-wider text-muted font-display">
+                Volumen semanal · músculos del día
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[0.65rem] text-muted">Semana:</span>
+                {Array.from({ length: N }, (_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setVolumeWeekIdx(i)}
+                    className={`px-2 py-0.5 text-[0.65rem] rounded transition ${
+                      volumeWeekIdx === i
+                        ? 'bg-accent/15 text-accent border border-accent/40'
+                        : 'border border-border text-muted hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    S{i + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {dayMuscles.map((m) => {
+                const sets = volumes[m] || 0;
+                const zone = getVolumeZone(m, sets);
+                return <VolumeBar key={m} muscle={m} sets={sets} zone={zone} />;
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Empty state — opciones para inicializar */}
         {exercises.length === 0 ? (
