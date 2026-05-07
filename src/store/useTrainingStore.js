@@ -51,14 +51,24 @@ export function isTrainingDaySnapshot(state, weekKey, weekday) {
   return !!state.weeks?.[weekKey]?.[weekday];
 }
 
-/** Mutate a day in place — clones template into snapshot if needed, then runs the mutator. */
+/** Mutate a day in place — clones template into snapshot if needed, then runs the mutator.
+ *  IMPORTANT: uses shallow cloning so unchanged exercises preserve their object refs.
+ *  Mutators must use Array.map (not in-place mutations) to replace only the changed
+ *  exercise, otherwise unrelated rows would re-render and clobber their local edit state. */
 function mutateDay(state, weekKey, weekday, mutator) {
   const weeks = { ...(state.weeks || {}) };
   const week = { ...(weeks[weekKey] || {}) };
   const existing = week[weekday];
-  const day = existing
-    ? JSON.parse(JSON.stringify(existing))
-    : JSON.parse(JSON.stringify(state.template?.[weekday] || { exercises: [] }));
+  let day;
+  if (existing) {
+    // Shallow clone — exercise objects keep the same identity until a mutator
+    // replaces a specific one via map().
+    day = { ...existing, exercises: [...(existing.exercises || [])] };
+  } else {
+    // First write to this (week, day) — materialize from template.
+    const tmpl = state.template?.[weekday] || { exercises: [] };
+    day = { ...tmpl, exercises: (tmpl.exercises || []).map((e) => ({ ...e })) };
+  }
   mutator(day);
   week[weekday] = day;
   weeks[weekKey] = week;
