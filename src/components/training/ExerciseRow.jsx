@@ -5,6 +5,7 @@ import EquipmentWeightInput from './EquipmentWeightInput.jsx';
 
 export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isFirst, isLast }) {
   const updateExerciseFields = useTrainingStore((s) => s.updateExerciseFields);
+  const updateExerciseFieldsNoLog = useTrainingStore((s) => s.updateExerciseFieldsNoLog);
   const deleteExercise = useTrainingStore((s) => s.deleteExercise);
   const reorderExercise = useTrainingStore((s) => s.reorderExercise);
   const appendLog = useTrainingStore((s) => s.appendLog);
@@ -51,6 +52,7 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
   };
 
   const onWeightChange = (next) => {
+    const equipChanged = next.equipment !== local.equipment;
     setLocal((s) => ({
       ...s,
       equipment: next.equipment,
@@ -58,6 +60,16 @@ export default function ExerciseRow({ weekday, exIdx, ex, onEdit, onOpenLog, isF
       weight: next.weight,
     }));
     setDirty(true);
+    // Switching the equipment type is a discrete user action — persist it
+    // immediately so the day-level preset-match badge updates instantly.
+    // Edits to numeric inputs within the same equipment stay local until ✓.
+    if (equipChanged) {
+      updateExerciseFieldsNoLog(weekday, exIdx, {
+        equipment: next.equipment,
+        equipmentData: next.equipmentData,
+        weight: next.weight,
+      });
+    }
   };
 
   const register = () => {

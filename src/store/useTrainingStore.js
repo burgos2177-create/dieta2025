@@ -105,6 +105,18 @@ export const useTrainingStore = create(
           return { weeks, log };
         }),
 
+      /** Apply a patch to an exercise WITHOUT auto-logging. Used for live edits
+       *  (e.g. switching equipment) that should persist immediately so the
+       *  preset-match badge updates, but don't deserve a log entry. */
+      updateExerciseFieldsNoLog: (weekday, exIdx, patch) =>
+        set((s) => ({
+          weeks: mutateDay(s, s.activeWeek, weekday, (day) => {
+            day.exercises = day.exercises.map((e, ei) =>
+              ei === exIdx ? { ...e, ...patch } : e
+            );
+          }),
+        })),
+
       /** Apply an arbitrary patch to an exercise (auto-logs once). */
       updateExerciseFields: (weekday, exIdx, patch) =>
         set((s) => {
