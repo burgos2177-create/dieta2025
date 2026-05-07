@@ -12,9 +12,10 @@ import { useFoodStore } from '../../store/useFoodStore.js';
 import { useProfileStore } from '../../store/useProfileStore.js';
 import { DAYS } from '../../lib/constants.js';
 import {
-  calcTMB, calcTDEE, kcalForDay, macrosForKcal,
+  calcTMB, calcTDEE, kcalForDay, macrosForKcal, dayType,
   sumEntries, computeFoodMacros, MICRO_TARGETS,
 } from '../../lib/calculators.js';
+import { buildNutritionPrintHTML } from '../../lib/printNutrition.js';
 import { showToast } from '../ui/Toast.jsx';
 
 export default function NutritionPage() {
@@ -68,6 +69,36 @@ export default function NutritionPage() {
           <h1 className="font-display text-3xl tracking-wider">NUTRICIÓN</h1>
           <p className="text-muted text-sm">Plan diario por tiempos de comida · {DAYS[activeDay].name}</p>
         </div>
+        <button
+          onClick={() => {
+            const html = buildNutritionPrintHTML({
+              profile: p,
+              day: DAYS[activeDay],
+              dayType: dayType(activeDay),
+              targets,
+              totals,
+              meals,
+              dayPlan,
+              foodsById,
+              micros: MICRO_TARGETS,
+            });
+            const win = window.open('', '_blank', 'width=820,height=1000');
+            if (!win) {
+              showToast('Permite ventanas emergentes para imprimir', 'error');
+              return;
+            }
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            win.focus();
+            // Trigger print after content settles
+            setTimeout(() => { try { win.print(); } catch (_) {} }, 350);
+          }}
+          className="px-4 py-2 text-sm rounded-lg border border-border text-muted hover:text-white hover:border-white/30 transition self-start"
+          title="Generar PDF imprimible"
+        >
+          🖨 Imprimir / PDF
+        </button>
       </div>
 
       <DaySelector active={activeDay} onChange={setActiveDay} />
