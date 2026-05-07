@@ -171,10 +171,19 @@ function ExerciseRoutineRow({
 
       {/* Per-week values */}
       <div className="space-y-1">
-        {Array.from({ length: weeks }, (_, weekIdx) => {
+        {(() => {
+          // Pre-compute weekly volumes so we can render the delta column.
+          const vols = Array.from({ length: weeks }, (_, i) => {
+            const w = ex.weeks?.[i] || {};
+            const kg = computeWeightKg(ex.equipment || 'manual', w.equipmentData || {}, ctx);
+            return (Number(w.reps) || 0) * (Number(w.sets) || 0) * kg;
+          });
+          return Array.from({ length: weeks }, (_, weekIdx) => {
           const wk = ex.weeks?.[weekIdx] || {};
           const data = wk.equipmentData || {};
           const computed = computeWeightKg(ex.equipment || 'manual', data, ctx);
+          const vol = vols[weekIdx];
+          const delta = weekIdx === 0 ? null : vol - vols[weekIdx - 1];
           const phase = mesoPhaseLabel(weekIdx + 1, weeks);
           const updateInput = (key, raw) => {
             const num = raw === '' ? 0 : Number(raw);
@@ -234,6 +243,20 @@ function ExerciseRoutineRow({
                 );
               })}
               <span className="font-mono text-accent/80 ml-auto whitespace-nowrap">= {computed.toFixed(2)} kg</span>
+              <span
+                className="font-mono text-cyan-300/80 whitespace-nowrap w-20 text-right"
+                title="Volumen = reps × sets × kg"
+              >
+                {vol.toFixed(0)} vol
+              </span>
+              <span
+                className={`font-mono whitespace-nowrap w-16 text-right ${
+                  delta == null ? 'text-muted/40' : delta > 0 ? 'text-ok' : delta < 0 ? 'text-bad' : 'text-muted'
+                }`}
+                title="Diferencial vs semana anterior"
+              >
+                {delta == null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}`}
+              </span>
               <button
                 onClick={() => onFillFrom(weekIdx)}
                 title={`Copiar valores de S${weekIdx + 1} a las semanas siguientes`}
@@ -243,7 +266,8 @@ function ExerciseRoutineRow({
               </button>
             </div>
           );
-        })}
+        });
+        })()}
       </div>
     </div>
   );
