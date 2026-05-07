@@ -461,18 +461,21 @@ export const useTrainingStore = create(
             ),
           };
         }),
-      /** Copy week N values to all subsequent weeks (useful starting point). */
-      fillMesoRoutineWeeksFrom: (mesoId, weekday, fromWeekIdx) =>
+      /** Copy week N values to all subsequent weeks of a SPECIFIC exercise. */
+      fillMesoRoutineWeeksFrom: (mesoId, weekday, exIdx, fromWeekIdx) =>
         set((s) => ({
           mesocycles: s.mesocycles.map((m) => {
             if (m.id !== mesoId) return m;
             const day = m.routines?.[weekday];
             if (!day?.exercises?.length) return m;
-            const exercises = day.exercises.map((e) => {
+            const exercises = day.exercises.map((e, i) => {
+              if (i !== exIdx) return e;
               const src = e.weeks?.[fromWeekIdx];
               if (!src) return e;
               const weeks = e.weeks.map((w, idx) =>
-                idx > fromWeekIdx ? { ...src, equipmentData: { ...(src.equipmentData || {}) } } : w
+                idx > fromWeekIdx
+                  ? { ...src, equipmentData: { ...(src.equipmentData || {}) } }
+                  : w
               );
               return { ...e, weeks };
             });

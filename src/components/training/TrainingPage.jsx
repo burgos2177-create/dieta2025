@@ -292,7 +292,7 @@ export default function TrainingPage() {
         onUpdateWeek={(wd, exIdx, weekIdx, patch) => updateMesoRoutineWeek(editingRoutinesId, wd, exIdx, weekIdx, patch)}
         onMoveExercise={(wd, fromIdx, toIdx) => moveMesoRoutineExercise(editingRoutinesId, wd, fromIdx, toIdx)}
         onImportFromTemplate={(wd) => importMesoRoutineFromTemplate(editingRoutinesId, wd)}
-        onFillFromWeek={(wd, fromWeekIdx) => fillMesoRoutineWeeksFrom(editingRoutinesId, wd, fromWeekIdx)}
+        onFillFromWeek={(wd, exIdx, fromWeekIdx) => fillMesoRoutineWeeksFrom(editingRoutinesId, wd, exIdx, fromWeekIdx)}
       />
     </div>
   );

@@ -92,7 +92,7 @@ export default function MesocycleRoutinesEditor({
                 onUpdate={(patch) => onUpdateExercise(weekday, exIdx, patch)}
                 onUpdateWeek={(weekIdx, patch) => onUpdateWeek(weekday, exIdx, weekIdx, patch)}
                 onMove={(dir) => onMoveExercise(weekday, exIdx, exIdx + dir)}
-                onFillFrom={(fromWeekIdx) => onFillFromWeek(weekday, fromWeekIdx)}
+                onFillFrom={(fromWeekIdx) => onFillFromWeek(weekday, exIdx, fromWeekIdx)}
               />
             ))}
             <div className="flex justify-center">
