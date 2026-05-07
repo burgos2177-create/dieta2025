@@ -13,6 +13,7 @@ const EMPTY_FORM = {
   servingSize: 100, servingUnit: 'g',
   kcal: 0, prot: 0, carb: 0, fat: 0,
   fiber: 0, sugar: 0, sodium: 0, notes: '',
+  equivalences: [],
 };
 
 export default function FoodsPage() {
@@ -312,6 +313,13 @@ function FoodForm({ form, setForm, onSubmit, editing, categories }) {
           <div className="font-mono text-accent text-sm py-2">{totalKcalCalc.toFixed(0)}</div>
         </Field>
       </div>
+      <Field label={`Equivalencias (1 unidad personalizada = ¿cuántos ${form.servingUnit}?)`}>
+        <EquivalencesEditor
+          items={form.equivalences || []}
+          servingUnit={form.servingUnit}
+          onChange={(items) => upd('equivalences', items)}
+        />
+      </Field>
       <Field label="Notas">
         <textarea value={form.notes} onChange={(e) => upd('notes', e.target.value)} rows={2} />
       </Field>
@@ -333,5 +341,84 @@ function Field({ label, children }) {
       <div className="text-[0.7rem] uppercase tracking-wider text-muted mb-1">{label}</div>
       {children}
     </label>
+  );
+}
+
+function EquivalencesEditor({ items, servingUnit, onChange }) {
+  const [label, setLabel] = useState('');
+  const [amount, setAmount] = useState('');
+
+  const add = () => {
+    const l = label.trim();
+    const a = Number(amount);
+    if (!l || !a) return;
+    if (l === servingUnit) return;
+    if (items.some((eq) => eq.label.toLowerCase() === l.toLowerCase())) return;
+    onChange([...items, { label: l, amount: a }]);
+    setLabel('');
+    setAmount('');
+  };
+
+  const remove = (idx) => onChange(items.filter((_, i) => i !== idx));
+
+  return (
+    <div className="space-y-2">
+      {items.length > 0 && (
+        <div className="space-y-1">
+          {items.map((eq, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between bg-white/[0.03] border border-border rounded px-2 py-1.5 text-xs"
+            >
+              <span className="text-white">
+                1 <span className="font-semibold">{eq.label}</span>{' '}
+                = <span className="font-mono text-accent">{eq.amount}</span>{' '}
+                <span className="text-muted">{servingUnit}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className="text-muted hover:text-bad px-1"
+                aria-label="Eliminar equivalencia"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-12 gap-2 items-center">
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
+          placeholder="ej. rebanada"
+          className="col-span-5 text-sm"
+        />
+        <span className="col-span-1 text-center text-muted text-sm">=</span>
+        <input
+          type="number"
+          step="0.1"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
+          placeholder={servingUnit}
+          className="col-span-3 text-sm"
+        />
+        <span className="col-span-1 text-muted text-xs">{servingUnit}</span>
+        <button
+          type="button"
+          onClick={add}
+          disabled={!label.trim() || !Number(amount)}
+          className="col-span-2 px-2 py-1.5 text-xs rounded bg-accent text-black font-semibold hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          ＋ Añadir
+        </button>
+      </div>
+      <div className="text-[0.65rem] text-muted">
+        Ej: para pan integral, "1 rebanada = 30 g" te deja meter "2 rebanadas" en lugar de "60 g".
+      </div>
+    </div>
   );
 }

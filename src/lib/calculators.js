@@ -89,6 +89,27 @@ export function computeFoodMacros(food, amount) {
   };
 }
 
+/** All units available for a food: canonical first, then user-defined equivalences. */
+export function getFoodUnits(food) {
+  if (!food) return [];
+  const units = [{ label: food.servingUnit, factor: 1, isCanonical: true }];
+  for (const e of food.equivalences || []) {
+    if (!e || !e.label) continue;
+    units.push({ label: e.label, factor: Number(e.amount) || 0, isCanonical: false });
+  }
+  return units;
+}
+
+/** Resolve an equivalence (canonical or label) to canonical food units. */
+export function toCanonicalAmount(food, amount, unit) {
+  const a = Number(amount) || 0;
+  if (!food || !a) return 0;
+  if (!unit || unit === food.servingUnit) return a;
+  const eq = (food.equivalences || []).find((e) => e.label === unit);
+  if (!eq) return a;
+  return a * (Number(eq.amount) || 0);
+}
+
 /** Sum an array of entries (foodId/amount) against the food DB */
 export function sumEntries(entries, foodsById) {
   return entries.reduce(
