@@ -426,13 +426,14 @@ export const useTrainingStore = create(
           delete copy.updatedAt;
           return { workoutPresets: [...s.workoutPresets, copy] };
         }),
-      overwriteWorkoutPreset: (id, { name, exercises, gym, mesoWeek, bodyWeightKg }) =>
+      overwriteWorkoutPreset: (id, patch = {}) =>
         set((s) => ({
-          workoutPresets: s.workoutPresets.map((p) =>
-            p.id !== id ? p : {
-              ...p,
-              name: name ? name.trim() : p.name,
-              exercises: (exercises || []).map((e) => ({
+          workoutPresets: s.workoutPresets.map((p) => {
+            if (p.id !== id) return p;
+            const next = { ...p, updatedAt: Date.now() };
+            if (patch.name !== undefined && patch.name) next.name = patch.name.trim();
+            if (patch.exercises !== undefined) {
+              next.exercises = (patch.exercises || []).map((e) => ({
                 id: e.id,
                 name: e.name,
                 tech: e.tech || '',
@@ -442,17 +443,17 @@ export const useTrainingStore = create(
                 weight: Number(e.weight) || 0,
                 equipment: e.equipment || 'manual',
                 equipmentData: e.equipmentData ? { ...e.equipmentData } : { kg: Number(e.weight) || 0 },
-              })),
-              gym: gym !== undefined ? (gym || '').trim() : p.gym,
-              mesoWeek: mesoWeek !== undefined
-                ? (mesoWeek == null ? null : Number(mesoWeek))
-                : p.mesoWeek,
-              bodyWeightKg: bodyWeightKg !== undefined
-                ? (bodyWeightKg == null ? null : Number(bodyWeightKg))
-                : p.bodyWeightKg,
-              updatedAt: Date.now(),
+              }));
             }
-          ),
+            if (patch.gym !== undefined) next.gym = (patch.gym || '').trim();
+            if (patch.mesoWeek !== undefined) {
+              next.mesoWeek = patch.mesoWeek == null ? null : Number(patch.mesoWeek);
+            }
+            if (patch.bodyWeightKg !== undefined) {
+              next.bodyWeightKg = patch.bodyWeightKg == null ? null : Number(patch.bodyWeightKg);
+            }
+            return next;
+          }),
         })),
       renameWorkoutPreset: (id, name) =>
         set((s) => ({
