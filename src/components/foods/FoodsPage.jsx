@@ -2,28 +2,35 @@ import { useMemo, useState } from 'react';
 import Card from '../ui/Card.jsx';
 import Pill from '../ui/Pill.jsx';
 import Modal from '../ui/Modal.jsx';
+import CategoriesManagerModal from './CategoriesManagerModal.jsx';
 import { useFoodStore } from '../../store/useFoodStore.js';
-import { FOOD_CATEGORIES, SERVING_UNITS } from '../../lib/constants.js';
+import { SERVING_UNITS } from '../../lib/constants.js';
 import { computeFoodMacros } from '../../lib/calculators.js';
 import { showToast } from '../ui/Toast.jsx';
 
 const EMPTY_FORM = {
-  id: '', name: '', brand: '', category: 'lacteos',
+  id: '', name: '', brand: '', category: '',
   servingSize: 100, servingUnit: 'g',
   kcal: 0, prot: 0, carb: 0, fat: 0,
   fiber: 0, sugar: 0, sodium: 0, notes: '',
 };
 
 export default function FoodsPage() {
-  const { foods, addFood, updateFood, deleteFood } = useFoodStore();
+  const { foods, categories, addFood, updateFood, deleteFood, addCategory, renameCategory, removeCategory } = useFoodStore();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('all');
   const [sort, setSort] = useState('name');
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({ ...EMPTY_FORM, category: categories[0]?.id || '' });
   const [editing, setEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showCats, setShowCats] = useState(false);
   const [calcFoodId, setCalcFoodId] = useState(null);
   const [calcAmount, setCalcAmount] = useState(100);
+
+  const catLabelById = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c.label])),
+    [categories]
+  );
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -53,7 +60,7 @@ export default function FoodsPage() {
       addFood(form);
       showToast('✅ Alimento guardado', 'ok');
     }
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, category: categories[0]?.id || '' });
     setEditing(false);
     setShowForm(false);
   };
@@ -109,10 +116,16 @@ export default function FoodsPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => { setForm(EMPTY_FORM); setEditing(false); setShowForm(true); }}
+            onClick={() => { setForm({ ...EMPTY_FORM, category: categories[0]?.id || '' }); setEditing(false); setShowForm(true); }}
             className="px-4 py-2 text-sm rounded-lg bg-accent text-black font-semibold hover:brightness-110"
           >
             ＋ Nuevo alimento
+          </button>
+          <button
+            onClick={() => setShowCats(true)}
+            className="px-3 py-2 text-sm rounded-lg border border-border text-muted hover:text-white"
+          >
+            🏷 Categorías ({categories.length})
           </button>
           <button
             onClick={exportJson}
@@ -139,7 +152,7 @@ export default function FoodsPage() {
           />
           <select value={cat} onChange={(e) => setCat(e.target.value)} className="md:col-span-3">
             <option value="all">Todas las categorías</option>
-            {FOOD_CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
           </select>
@@ -182,17 +195,35 @@ export default function FoodsPage() {
 
       {/* Food list */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((f) => <FoodCard key={f.id} food={f} onEdit={onEdit} onDelete={onDelete} />)}
+        {filtered.map((f) => (
+          <FoodCard
+            key={f.id}
+            food={f}
+            categoryLabel={catLabelById[f.category] || f.category}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
       </div>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Editar alimento' : 'Nuevo alimento'} maxWidth="max-w-2xl">
-        <FoodForm form={form} setForm={setForm} onSubmit={onSubmit} editing={editing} />
+        <FoodForm form={form} setForm={setForm} onSubmit={onSubmit} editing={editing} categories={categories} />
       </Modal>
+
+      <CategoriesManagerModal
+        open={showCats}
+        onClose={() => setShowCats(false)}
+        categories={categories}
+        foods={foods}
+        onAdd={(data) => { addCategory(data); showToast('Categoría añadida', 'ok'); }}
+        onRename={(id, label) => { renameCategory(id, label); showToast('Categoría renombrada'); }}
+        onRemove={(id, reassignTo) => { removeCategory(id, reassignTo); showToast('Categoría eliminada'); }}
+      />
     </div>
   );
 }
 
-function FoodCard({ food, onEdit, onDelete }) {
+function FoodCard({ food, categoryLabel, onEdit, onDelete }) {
   const total = food.prot * 4 + food.carb * 4 + food.fat * 9;
   const p = total > 0 ? (food.prot * 4) / total : 0;
   const c = total > 0 ? (food.carb * 4) / total : 0;
@@ -203,7 +234,7 @@ function FoodCard({ food, onEdit, onDelete }) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="font-display text-lg text-white truncate">{food.name}</div>
-            <div className="text-xs text-muted">{food.brand || '—'} · {food.category}</div>
+            <div className="text-xs text-muted">{food.brand || '—'} · {categoryLabel}</div>
           </div>
           <Pill tone="cyan">{food.kcal} kcal</Pill>
         </div>
@@ -237,7 +268,7 @@ function MacroMini({ label, value, color }) {
   );
 }
 
-function FoodForm({ form, setForm, onSubmit, editing }) {
+function FoodForm({ form, setForm, onSubmit, editing, categories }) {
   const upd = (k, v) => setForm({ ...form, [k]: v });
   const n = (k) => (e) => upd(k, e.target.value === '' ? 0 : parseFloat(e.target.value));
   const totalKcalCalc = form.prot * 4 + form.carb * 4 + form.fat * 9;
@@ -253,7 +284,7 @@ function FoodForm({ form, setForm, onSubmit, editing }) {
         </Field>
         <Field label="Categoría">
           <select value={form.category} onChange={(e) => upd('category', e.target.value)}>
-            {FOOD_CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
           </select>
