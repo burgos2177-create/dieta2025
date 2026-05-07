@@ -13,7 +13,7 @@ import { useProfileStore } from '../../store/useProfileStore.js';
 import { DAYS } from '../../lib/constants.js';
 import {
   calcTMB, calcTDEE, kcalForDay, macrosForKcal,
-  sumEntries, computeFoodMacros,
+  sumEntries, computeFoodMacros, MICRO_TARGETS,
 } from '../../lib/calculators.js';
 import { showToast } from '../ui/Toast.jsx';
 
@@ -96,6 +96,11 @@ export default function NutritionPage() {
             <MacroBar label="Carbohidratos" value={totals.carb} target={targets.carbG} color="#00e5ff" />
             <MacroBar label="Grasas"        value={totals.fat}  target={targets.lipG}  color="#f59e0b" />
           </div>
+        </div>
+        <div className="mt-5 pt-4 border-t border-border grid grid-cols-3 gap-3">
+          <MicroStat label="Fibra"  value={totals.fiber}  cfg={MICRO_TARGETS.fiber} />
+          <MicroStat label="Azúcar" value={totals.sugar}  cfg={MICRO_TARGETS.sugar} />
+          <MicroStat label="Sodio"  value={totals.sodium} cfg={MICRO_TARGETS.sodium} />
         </div>
       </Card>
 
@@ -342,6 +347,43 @@ export default function NutritionPage() {
           showToast('Preset eliminado');
         }}
       />
+    </div>
+  );
+}
+
+function MicroStat({ label, value, cfg }) {
+  const { target, unit, type } = cfg;
+  const v = value || 0;
+  const pct = target > 0 ? Math.min(1, v / target) : 0;
+  // For 'goal' (fiber): green when >=, accent below; for 'limit' (sugar/sodium): green under, red over
+  let barColor, valueColor, suffix;
+  if (type === 'goal') {
+    const ok = v >= target;
+    barColor = ok ? '#22c55e' : '#00e5ff';
+    valueColor = ok ? 'text-ok' : 'text-white';
+    suffix = `/ ${target}${unit}`;
+  } else {
+    const over = v > target;
+    barColor = over ? '#ef4444' : '#22c55e';
+    valueColor = over ? 'text-bad' : v > target * 0.8 ? 'text-warn' : 'text-ok';
+    suffix = `/ <${target}${unit}`;
+  }
+  const fmt = (n) => (n >= 100 ? Math.round(n) : n.toFixed(1).replace('.0', ''));
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1">
+        <span className="text-[0.65rem] uppercase tracking-wider text-muted font-display">{label}</span>
+        <span className="font-mono text-xs">
+          <span className={valueColor}>{fmt(v)}{unit}</span>
+          <span className="text-muted/70 ml-1">{suffix}</span>
+        </span>
+      </div>
+      <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+        <div
+          className="h-full transition-all"
+          style={{ width: `${Math.min(100, pct * 100)}%`, background: barColor }}
+        />
+      </div>
     </div>
   );
 }

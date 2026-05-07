@@ -250,6 +250,13 @@ function FoodCard({ food, categoryLabel, onEdit, onDelete }) {
           <div style={{ width: c * 100 + '%', background: '#00e5ff' }} />
           <div style={{ width: g * 100 + '%', background: '#f59e0b' }} />
         </div>
+        {(food.fiber > 0 || food.sugar > 0 || food.sodium > 0) && (
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[0.6rem] text-muted">
+            {food.fiber > 0  && <span className="bg-white/[0.03] border border-border rounded px-1.5 py-0.5">Fibra <span className="font-mono text-white">{food.fiber}g</span></span>}
+            {food.sugar > 0  && <span className="bg-white/[0.03] border border-border rounded px-1.5 py-0.5">Azúcar <span className="font-mono text-white">{food.sugar}g</span></span>}
+            {food.sodium > 0 && <span className="bg-white/[0.03] border border-border rounded px-1.5 py-0.5">Sodio <span className="font-mono text-white">{food.sodium}mg</span></span>}
+          </div>
+        )}
         {food.notes && <div className="text-[0.7rem] text-muted mt-2 italic">{food.notes}</div>}
       </div>
       <div className="border-t border-border px-4 py-2 flex justify-end gap-3 text-xs">

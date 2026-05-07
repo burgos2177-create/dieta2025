@@ -79,13 +79,16 @@ export const lbToKg = (lb) => lb / 2.20462;
 /** Compute macros for a given food at a given amount.
  *  Foods store nutrients per `servingSize` of the food. */
 export function computeFoodMacros(food, amount) {
-  if (!food || !amount) return { kcal: 0, prot: 0, carb: 0, fat: 0 };
+  if (!food || !amount) return { kcal: 0, prot: 0, carb: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 };
   const ratio = amount / food.servingSize;
   return {
-    kcal: food.kcal * ratio,
-    prot: food.prot * ratio,
-    carb: food.carb * ratio,
-    fat:  food.fat  * ratio,
+    kcal:   food.kcal * ratio,
+    prot:   food.prot * ratio,
+    carb:   food.carb * ratio,
+    fat:    food.fat  * ratio,
+    fiber:  (food.fiber  || 0) * ratio,
+    sugar:  (food.sugar  || 0) * ratio,
+    sodium: (food.sodium || 0) * ratio,
   };
 }
 
@@ -117,12 +120,22 @@ export function sumEntries(entries, foodsById) {
       const f = foodsById[e.foodId];
       if (!f) return acc;
       const m = computeFoodMacros(f, e.amount);
-      acc.kcal += m.kcal;
-      acc.prot += m.prot;
-      acc.carb += m.carb;
-      acc.fat  += m.fat;
+      acc.kcal   += m.kcal;
+      acc.prot   += m.prot;
+      acc.carb   += m.carb;
+      acc.fat    += m.fat;
+      acc.fiber  += m.fiber;
+      acc.sugar  += m.sugar;
+      acc.sodium += m.sodium;
       return acc;
     },
-    { kcal: 0, prot: 0, carb: 0, fat: 0 }
+    { kcal: 0, prot: 0, carb: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 }
   );
 }
+
+/** Default reference targets for micronutrients (sensible adult defaults). */
+export const MICRO_TARGETS = {
+  fiber:  { target: 30,   unit: 'g',  type: 'goal'  }, // hit or exceed
+  sugar:  { target: 50,   unit: 'g',  type: 'limit' }, // stay under
+  sodium: { target: 2300, unit: 'mg', type: 'limit' }, // stay under
+};

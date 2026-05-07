@@ -157,12 +157,19 @@ export default function AddFoodModal({ open, onClose, onAdd, gap }) {
             </div>
           )}
           {preview && (
-            <div className="grid grid-cols-4 gap-2 text-center text-xs">
-              <Stat label="kcal" value={preview.kcal.toFixed(0)} color="text-accent" />
-              <Stat label="P"    value={preview.prot.toFixed(1) + 'g'} color="text-ok" />
-              <Stat label="CH"   value={preview.carb.toFixed(1) + 'g'} color="text-cyan-300" />
-              <Stat label="G"    value={preview.fat.toFixed(1)  + 'g'} color="text-warn" />
-            </div>
+            <>
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <Stat label="kcal" value={preview.kcal.toFixed(0)} color="text-accent" />
+                <Stat label="P"    value={preview.prot.toFixed(1) + 'g'} color="text-ok" />
+                <Stat label="CH"   value={preview.carb.toFixed(1) + 'g'} color="text-cyan-300" />
+                <Stat label="G"    value={preview.fat.toFixed(1)  + 'g'} color="text-warn" />
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center text-[0.65rem] text-muted">
+                <MicroChip label="Fibra"  value={preview.fiber.toFixed(1)} unit="g" />
+                <MicroChip label="Azúcar" value={preview.sugar.toFixed(1)} unit="g" />
+                <MicroChip label="Sodio"  value={preview.sodium.toFixed(0)} unit="mg" />
+              </div>
+            </>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -189,6 +196,15 @@ function Stat({ label, value, color }) {
     <div className="bg-white/5 border border-border rounded-lg py-2">
       <div className={`font-mono text-sm ${color}`}>{value}</div>
       <div className="text-[0.6rem] uppercase text-muted">{label}</div>
+    </div>
+  );
+}
+
+function MicroChip({ label, value, unit }) {
+  return (
+    <div className="bg-white/[0.03] border border-border rounded py-1">
+      <span className="font-mono text-white">{value}{unit}</span>{' '}
+      <span className="opacity-70">{label}</span>
     </div>
   );
 }
