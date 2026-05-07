@@ -223,45 +223,6 @@ export default function TrainingPage() {
 
       <LogDetailModal open={!!logEx} onClose={() => setLogEx(null)} exercise={logEx} />
 
-      <SaveWorkoutPresetModal
-        open={!!savePresetFor}
-        onClose={() => setSavePresetFor(null)}
-        exercises={savePresetFor?.exercises}
-        dayLabel={savePresetFor?.label}
-        existingPresets={workoutPresets}
-        matchingPresetId={
-          findMatchingWorkoutPreset(workoutPresets, savePresetFor?.exercises || [])?.id || null
-        }
-        defaultGym={currentGym}
-        defaultMesoWeek={mesoInfo?.weekNumber || null}
-        defaultMesoWeeks={mesoInfo?.meso?.weeks || 5}
-        defaultBodyWeightKg={Number(profile.peso) || null}
-        onSubmit={(payload) => {
-          saveWorkoutPreset(payload);
-          if (payload.gym) setCurrentGym(payload.gym);
-          showToast('Preset de rutina guardado', 'ok');
-        }}
-        onOverwrite={(id, payload) => {
-          overwriteWorkoutPreset(id, payload);
-          if (payload.gym) setCurrentGym(payload.gym);
-          showToast('Preset sobrescrito', 'ok');
-        }}
-      />
-
-      <WorkoutPresetsManagerModal
-        open={presetsOpen}
-        onClose={() => setPresetsOpen(false)}
-        presets={workoutPresets}
-        defaultMesoWeeks={mesoInfo?.meso?.weeks || 5}
-        onRename={(id, name) => { renameWorkoutPreset(id, name); showToast('Preset renombrado'); }}
-        onRemove={(id) => { removeWorkoutPreset(id); showToast('Preset eliminado'); }}
-        onUpdate={(id, patch) => overwriteWorkoutPreset(id, patch)}
-        onDuplicate={(id, overrides) => {
-          duplicateWorkoutPreset(id, overrides);
-          showToast('Preset duplicado', 'ok');
-        }}
-      />
-
       <TrainingMesocycleModal
         open={mesoOpen}
         onClose={() => setMesoOpen(false)}
@@ -317,6 +278,47 @@ export default function TrainingPage() {
           setSavePresetFor({ weekday: wd, label: cfgLabel, exercises });
         }}
         onOpenPresetsManager={() => setPresetsOpen(true)}
+      />
+
+      {/* These two modals are rendered LAST so they layer on top of the
+          MesocycleRoutinesEditor when opened from inside it. */}
+      <SaveWorkoutPresetModal
+        open={!!savePresetFor}
+        onClose={() => setSavePresetFor(null)}
+        exercises={savePresetFor?.exercises}
+        dayLabel={savePresetFor?.label}
+        existingPresets={workoutPresets}
+        matchingPresetId={
+          findMatchingWorkoutPreset(workoutPresets, savePresetFor?.exercises || [])?.id || null
+        }
+        defaultGym={currentGym}
+        defaultMesoWeek={mesoInfo?.weekNumber || null}
+        defaultMesoWeeks={mesoInfo?.meso?.weeks || 5}
+        defaultBodyWeightKg={Number(profile.peso) || null}
+        onSubmit={(payload) => {
+          saveWorkoutPreset(payload);
+          if (payload.gym) setCurrentGym(payload.gym);
+          showToast('Preset de rutina guardado', 'ok');
+        }}
+        onOverwrite={(id, payload) => {
+          overwriteWorkoutPreset(id, payload);
+          if (payload.gym) setCurrentGym(payload.gym);
+          showToast('Preset sobrescrito', 'ok');
+        }}
+      />
+
+      <WorkoutPresetsManagerModal
+        open={presetsOpen}
+        onClose={() => setPresetsOpen(false)}
+        presets={workoutPresets}
+        defaultMesoWeeks={mesoInfo?.meso?.weeks || 5}
+        onRename={(id, name) => { renameWorkoutPreset(id, name); showToast('Preset renombrado'); }}
+        onRemove={(id) => { removeWorkoutPreset(id); showToast('Preset eliminado'); }}
+        onUpdate={(id, patch) => overwriteWorkoutPreset(id, patch)}
+        onDuplicate={(id, overrides) => {
+          duplicateWorkoutPreset(id, overrides);
+          showToast('Preset duplicado', 'ok');
+        }}
       />
     </div>
   );
