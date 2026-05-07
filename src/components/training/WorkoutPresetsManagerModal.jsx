@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import Modal from '../ui/Modal.jsx';
 
-export default function WorkoutPresetsManagerModal({ open, onClose, presets, onRename, onRemove, onUpdate, onDuplicate, defaultMesoWeeks = 5 }) {
+export default function WorkoutPresetsManagerModal({ open, onClose, presets, onRename, onRemove, onUpdate, onDuplicate, onRegenerateFromMeso, hasActiveMeso = false, defaultMesoWeeks = 5 }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ name: '', gym: '', mesoWeek: '', bodyWeightKg: '' });
   const [duplicatingId, setDuplicatingId] = useState(null);
@@ -219,8 +219,21 @@ export default function WorkoutPresetsManagerModal({ open, onClose, presets, onR
           </div>
         )}
 
-        <div className="flex justify-end pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border text-muted hover:text-white">
+        <div className="flex justify-between items-center pt-2 gap-2 flex-wrap">
+          {hasActiveMeso && onRegenerateFromMeso && (
+            <button
+              onClick={() => {
+                if (confirm(`Esto eliminará TODOS los presets actuales (${presets.length}) y generará 3 nuevos (uno por día) tomando los valores de la semana 1 del mesociclo activo. ¿Continuar?`)) {
+                  onRegenerateFromMeso();
+                }
+              }}
+              className="px-3 py-1.5 text-xs rounded-md border border-warn/40 text-warn hover:bg-warn/10"
+              title="Borra todos y crea 3 nuevos a partir de la rutina del meso activo"
+            >
+              🔄 Regenerar desde meso activo
+            </button>
+          )}
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border text-muted hover:text-white ml-auto">
             Cerrar
           </button>
         </div>

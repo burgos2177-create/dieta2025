@@ -30,7 +30,7 @@ export default function TrainingPage() {
     updateMesoRoutineWeek, moveMesoRoutineExercise, importMesoRoutineFromTemplate,
     fillMesoRoutineWeeksFrom, setMesoRoutineDayExercises,
     openDayEntry, closeDayEntry, reopenDayEntry,
-    saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, overwriteWorkoutPreset, duplicateWorkoutPreset,
+    saveWorkoutPreset, removeWorkoutPreset, renameWorkoutPreset, overwriteWorkoutPreset, duplicateWorkoutPreset, regenerateWorkoutPresetsFromMeso,
   } = useTrainingStore();
 
   const trainingDays = useTrainingStore((s) => selectTrainingDaysForWeek(s, s.activeWeek));
@@ -312,12 +312,17 @@ export default function TrainingPage() {
         onClose={() => setPresetsOpen(false)}
         presets={workoutPresets}
         defaultMesoWeeks={mesoInfo?.meso?.weeks || 5}
+        hasActiveMeso={!!activeMesocycleId}
         onRename={(id, name) => { renameWorkoutPreset(id, name); showToast('Preset renombrado'); }}
         onRemove={(id) => { removeWorkoutPreset(id); showToast('Preset eliminado'); }}
         onUpdate={(id, patch) => overwriteWorkoutPreset(id, patch)}
         onDuplicate={(id, overrides) => {
           duplicateWorkoutPreset(id, overrides);
           showToast('Preset duplicado', 'ok');
+        }}
+        onRegenerateFromMeso={() => {
+          regenerateWorkoutPresetsFromMeso();
+          showToast('Presets regenerados desde el meso', 'ok');
         }}
       />
     </div>

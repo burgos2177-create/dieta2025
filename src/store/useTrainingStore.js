@@ -368,6 +368,43 @@ export const useTrainingStore = create(
         }),
       removeWorkoutPreset: (id) =>
         set((s) => ({ workoutPresets: s.workoutPresets.filter((p) => p.id !== id) })),
+      /** Replace ALL workoutPresets with one auto-generated per training day
+       *  using the active mesocycle's routine (week 1 values). */
+      regenerateWorkoutPresetsFromMeso: () =>
+        set((s) => {
+          const meso = s.mesocycles.find((m) => m.id === s.activeMesocycleId);
+          if (!meso) return {};
+          const newPresets = [];
+          for (const cfg of TR_DAYS_CONFIG) {
+            const dayRoutine = meso.routines?.[cfg.weekday];
+            if (!dayRoutine?.exercises?.length) continue;
+            const exercises = (dayRoutine.exercises || []).map((e) => {
+              const wk = e.weeks?.[0] || {};
+              return {
+                id: e.id,
+                name: e.name,
+                tech: e.tech || '',
+                muscle: e.muscle,
+                reps: Number(wk.reps) || 0,
+                sets: Number(wk.sets) || 0,
+                weight: Number(wk.weight) || 0,
+                equipment: e.equipment || 'manual',
+                equipmentData: wk.equipmentData ? { ...wk.equipmentData } : { kg: Number(wk.weight) || 0 },
+              };
+            });
+            newPresets.push({
+              id: `wp_${Date.now().toString(36)}_${cfg.weekday}_${Math.random().toString(36).slice(2, 6)}`,
+              name: `${cfg.focus.split(/[/:]/)[0].trim()} · ${meso.name}`,
+              exercises,
+              gym: '',
+              mesoWeek: 1,
+              bodyWeightKg: Number(meso.startWeight) || null,
+              createdAt: Date.now(),
+            });
+          }
+          return { workoutPresets: newPresets };
+        }),
+
       /** Clone a preset and apply overrides (e.g. {mesoWeek: 2, name: 'Pierna S2'}). */
       duplicateWorkoutPreset: (id, overrides = {}) =>
         set((s) => {
