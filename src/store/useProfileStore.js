@@ -11,6 +11,9 @@ const DEFAULTS = {
   altura: 174,
   sexo: 'm',
   act: 1.725,
+  // NEAT (kcal/día sin ejercicio) — usado para el balance real del día.
+  // act se mantiene para el cálculo del objetivo Lyle (planificación).
+  neat: 600,
   highPct: 110,
   lowPct: 90,
   carb: 56,

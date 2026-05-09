@@ -77,8 +77,11 @@ export default function Dashboard() {
   const trainingKcal = (trainingSnapshot?.status === 'closed' ? Number(trainingSnapshot.kcalBurned) || 0 : 0);
   const extraKcal = (extraSessionsToday || []).reduce((a, s) => a + (Number(s.kcal) || 0), 0);
   const exerciseKcal = trainingKcal + extraKcal;
-  // Real total daily expenditure = NEAT TDEE + actual exercise burn (no double count).
-  const totalBurn = Math.round(d.tdee + exerciseKcal);
+  // Real total daily expenditure = TMB + NEAT (sin ejercicio) + entreno real registrado.
+  // No usamos d.tdee porque ese ya incluye el ejercicio típico (doble conteo).
+  const neatKcal = Number(p.neat ?? 600);
+  const baselineBurn = Math.round(d.tmb + neatKcal);
+  const totalBurn = baselineBurn + exerciseKcal;
   // Net balance: positive = surplus (over what you burned), negative = deficit.
   const netBalance = Math.round(consumed.kcal) - totalBurn;
   // Remaining vs Lyle target (planning view): how much you can still eat to hit the target.
@@ -155,14 +158,14 @@ export default function Dashboard() {
             sub={`${(meals || []).reduce((a, m) => a + (dayPlan?.[m.id]?.length || 0), 0)} alimentos`}
           />
           <BalanceTile
-            label="Gasto real (NEAT + entreno)"
+            label="Gasto real"
             value={totalBurn.toLocaleString()}
             unit="kcal"
             tone="orange"
             sub={
               exerciseKcal > 0
-                ? `${Math.round(d.tdee).toLocaleString()} NEAT + ${exerciseKcal} entreno`
-                : `${Math.round(d.tdee).toLocaleString()} NEAT (sin entreno aún)`
+                ? `${Math.round(d.tmb)} TMB + ${neatKcal} NEAT + ${exerciseKcal} entreno`
+                : `${Math.round(d.tmb)} TMB + ${neatKcal} NEAT (sin entreno aún)`
             }
           />
           <BalanceTile
@@ -181,10 +184,12 @@ export default function Dashboard() {
           />
         </div>
         <div className="text-[0.7rem] text-muted/70 mt-3 leading-relaxed">
-          <strong>Gasto real</strong> = TDEE NEAT (Harris-Benedict + factor de actividad sin ejercicio)
-          + las kcal del entreno cerrado y actividades extra del día.
+          <strong>Gasto real</strong> = TMB (Harris-Benedict) + NEAT (vida diaria sin ejercicio, configurable
+          en Perfil) + kcal del entreno cerrado y actividades extra del día. No usa el TDEE combinado para
+          evitar contar el ejercicio dos veces.
           <strong className="ml-1">Balance neto</strong> = Consumido − Gasto real (positivo = superávit, negativo = déficit).
-          El <strong>objetivo Lyle</strong> es la meta de ingesta del día según el ciclado.
+          El <strong>objetivo Lyle</strong> es tu meta de ingesta del día según el ciclado, basada en el TDEE
+          combinado de planificación.
         </div>
       </Card>
 

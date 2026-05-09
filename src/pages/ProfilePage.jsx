@@ -3,7 +3,7 @@ import Card from '../components/ui/Card.jsx';
 import Pill from '../components/ui/Pill.jsx';
 import { useProfileStore } from '../store/useProfileStore.js';
 import {
-  ACTIVITY_LEVELS, MACRO_PRESETS, DAYS,
+  ACTIVITY_LEVELS, NEAT_LEVELS, MACRO_PRESETS, DAYS,
 } from '../lib/constants.js';
 import {
   calcTMB, calcTDEE, calcIMC, kcalForDay, weeklyAvg,
@@ -70,15 +70,26 @@ export default function ProfilePage() {
             <Field label="Altura (cm)">
               <input type="number" value={p.altura} onChange={(e) => p.setField('altura', Number(e.target.value))} />
             </Field>
-            <Field label="Nivel de actividad (sin ejercicio)">
+            <Field label="Nivel de actividad (objetivo Lyle)">
               <select value={p.act} onChange={(e) => p.setField('act', Number(e.target.value))}>
                 {ACTIVITY_LEVELS.map((a) => (
-                  <option key={a.id} value={a.id}>{a.label} — {a.sub}</option>
+                  <option key={a.id} value={a.id}>{a.label}</option>
                 ))}
               </select>
               <div className="text-[0.65rem] text-muted/70 mt-1">
-                Solo el NEAT (vida diaria fuera del entreno). Las kcal del entrenamiento se suman aparte
-                desde la página Entreno (snapshot cerrado o actividades extra).
+                Multiplicador Harris-Benedict combinado (NEAT + ejercicio típico). Define el TDEE
+                de mantenimiento del que sale el objetivo Lyle de cada día.
+              </div>
+            </Field>
+            <Field label="NEAT (sin ejercicio, kcal/día)">
+              <select value={p.neat ?? 600} onChange={(e) => p.setField('neat', Number(e.target.value))}>
+                {NEAT_LEVELS.map((n) => (
+                  <option key={n.id} value={n.id}>{n.label} — {n.id} kcal · {n.sub}</option>
+                ))}
+              </select>
+              <div className="text-[0.65rem] text-muted/70 mt-1">
+                Gasto diario fuera del entreno estructurado. Para el balance real:
+                <span className="font-mono text-white"> TMB + NEAT + entreno registrado</span>.
               </div>
             </Field>
           </div>

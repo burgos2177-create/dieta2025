@@ -237,14 +237,28 @@ export function buildSeedNutPlan() {
   return base;
 }
 
-// NEAT (Non-Exercise Activity Thermogenesis) levels — sin contar ejercicio
-// programado. Las kcal del entrenamiento se SUMAN aparte (snapshot del dia
-// + extra sessions) para evitar doble conteo.
+// Activity multipliers (Harris-Benedict) — combinados (NEAT + ejercicio típico).
+// Solo se usan para calcular el OBJETIVO de Lyle (planificación de la
+// ingesta semanal). Para el GASTO REAL del día usar TMB + NEAT_KCAL +
+// entreno registrado (ver NEAT_LEVELS abajo).
 export const ACTIVITY_LEVELS = [
-  { id: 1.2,   label: 'Sedentario',     sub: 'oficina, poco movimiento (sin ejercicio)' },
-  { id: 1.375, label: 'Ligero',         sub: 'oficina + caminatas o pausas activas' },
-  { id: 1.55,  label: 'Activo',         sub: 'trabajo de pie / muchos pasos diarios' },
-  { id: 1.725, label: 'Muy activo',     sub: 'trabajo físico / labor manual' },
+  { id: 1.2,   label: 'Sedentario'                  },
+  { id: 1.375, label: 'Ligero (1-3 d/sem)'          },
+  { id: 1.55,  label: 'Moderado (3-5 d/sem)'        },
+  { id: 1.725, label: 'Alto (6-7 d/sem)'            },
+  { id: 1.9,   label: 'Atleta (2×/día)'             },
+];
+
+// NEAT (Non-Exercise Activity Thermogenesis) en kcal/día. Es lo que gastas
+// fuera del entrenamiento estructurado: caminar, estar de pie, gestos, etc.
+// Esta cifra se SUMA al TMB para tener un baseline de gasto antes de añadir
+// el entreno real registrado del día.
+export const NEAT_LEVELS = [
+  { id: 200,  label: 'Mínimo',    sub: 'oficina sedentario, casi sin pasos' },
+  { id: 400,  label: 'Bajo',      sub: 'oficina + algunas caminatas' },
+  { id: 600,  label: 'Medio',     sub: 'movimiento moderado (4-7k pasos)' },
+  { id: 800,  label: 'Alto',      sub: 'activo en el día (7-10k pasos)' },
+  { id: 1000, label: 'Muy alto',  sub: 'trabajo activo / labor física' },
 ];
 
 // Macro presets
