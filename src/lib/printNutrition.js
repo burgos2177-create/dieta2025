@@ -41,27 +41,9 @@ const DAY_TYPE_LABEL = {
   normo: 'NORMO',
 };
 
-export function buildNutritionPrintHTML({
-  profile,
-  day,           // { name, label, type, workout }
-  date,          // Date object for the day being printed (optional)
-  dayType,       // 'high' | 'low' | 'normo'
-  targets,       // { kcal, protG, carbG, lipG }
-  totals,        // sum from sumEntries (incl micros)
-  meals,         // [{id, label, icon, sub}]
-  dayPlan,       // { mealId: [entry, ...] }
-  foodsById,
-  micros,        // MICRO_TARGETS
-}) {
-  const printDate = date ? new Date(date) : new Date();
-  const dateStr = printDate.toLocaleDateString('es-MX', {
-    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
-  });
-  const genStr = new Date().toLocaleString('es-MX');
-
-  const typeLabel = DAY_TYPE_LABEL[dayType] || '';
-
-  const mealSections = meals.map((meal) => {
+/** Render meal sections for a single day plan. Returns HTML string. */
+function renderMealSections(meals, dayPlan, foodsById) {
+  return meals.map((meal) => {
     const entries = dayPlan[meal.id] || [];
     const t = sumEntries(entries, foodsById);
     const rows = entries.length === 0
@@ -116,17 +98,99 @@ export function buildNutritionPrintHTML({
         </div>
       </section>`;
   }).join('');
+}
 
+function renderSummary(targets, totals, micros) {
   const microRow = (label, value, target, unit, type) => {
     const ok = type === 'goal' ? value >= target : value <= target;
     return `<span class="micro ${ok ? 'ok' : 'bad'}">${escapeHtml(label)}: <strong>${fmtNum(value, value < 10 ? 1 : 0)}${unit}</strong> ${type === 'goal' ? '/ ' : '/ <'}${target}${unit}</span>`;
   };
+  return `
+    <section class="summary">
+      <h2>TOTAL DEL DÍA</h2>
+      <div class="grid">
+        <div class="stat"><div class="l">Kcal</div><div class="v">${fmtNum(totals.kcal)}<small> / ${targets.kcal}</small></div></div>
+        <div class="stat"><div class="l">Proteína</div><div class="v">${fmtNum(totals.prot)}<small>g / ${targets.protG}g</small></div></div>
+        <div class="stat"><div class="l">Carbs</div><div class="v">${fmtNum(totals.carb)}<small>g / ${targets.carbG}g</small></div></div>
+        <div class="stat"><div class="l">Grasas</div><div class="v">${fmtNum(totals.fat)}<small>g / ${targets.lipG}g</small></div></div>
+      </div>
+      <div class="micros">
+        ${microRow('Fibra',  totals.fiber,  micros.fiber.target,  micros.fiber.unit,  micros.fiber.type)}
+        ${microRow('Azúcar', totals.sugar,  micros.sugar.target,  micros.sugar.unit,  micros.sugar.type)}
+        ${microRow('Sodio',  totals.sodium, micros.sodium.target, micros.sodium.unit, micros.sodium.type)}
+      </div>
+    </section>`;
+}
+
+/**
+ * Build the printable HTML.
+ *
+ * Modes:
+ * - Single day: pass `day`, `date`, `dayType`, `targets`, `totals`, `dayPlan`.
+ * - Multiple sections (week / grouped week): pass `sections` = [{
+ *     title,        // e.g. "Lunes · Miércoles · Viernes"
+ *     subtitle,     // e.g. "Día ALTO · 3,234 kcal"
+ *     dayPlan,      // the meal plan to render
+ *     targets,      // { kcal, protG, carbG, lipG }
+ *     totals,       // sumEntries result
+ *   }]
+ */
+export function buildNutritionPrintHTML(opts) {
+  const {
+    profile,
+    meals,
+    foodsById,
+    micros,
+    title: customTitle,
+    subtitle: customSubtitle,
+    sections,
+    // Single-day fields (when sections not provided)
+    day,
+    date,
+    dayType,
+    targets,
+    totals,
+    dayPlan,
+  } = opts;
+
+  const printDate = date ? new Date(date) : new Date();
+  const dateStr = printDate.toLocaleDateString('es-MX', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+  });
+  const genStr = new Date().toLocaleString('es-MX');
+
+  // Build sections
+  const list = sections && sections.length > 0
+    ? sections
+    : [{
+        title: day?.name?.toUpperCase?.() || 'DÍA',
+        subtitle: `Día ${DAY_TYPE_LABEL[dayType] || ''} · Objetivo ${targets.kcal} kcal`,
+        dayPlan,
+        targets,
+        totals,
+      }];
+
+  const headerTitle = customTitle || (sections ? 'PLAN NUTRICIONAL · SEMANA' : `PLAN NUTRICIONAL · ${day?.name?.toUpperCase() || ''}`);
+  const headerSubtitle = customSubtitle || (sections
+    ? `${escapeHtml(profile?.nombre || 'Plan personal')}`
+    : `${escapeHtml(profile?.nombre || 'Plan personal')} · ${escapeHtml(dateStr)}${day?.workout && day.workout !== 'Descanso' ? ` · Entreno: ${escapeHtml(day.workout)}` : ''}`);
+
+  const sectionsHtml = list.map((sec, i) => `
+    <section class="day-section ${i > 0 ? 'page-break-before' : ''}">
+      <div class="section-h">
+        <h2>${escapeHtml(sec.title)}</h2>
+        <div class="section-sub">${escapeHtml(sec.subtitle || '')}</div>
+      </div>
+      ${renderMealSections(meals, sec.dayPlan || {}, foodsById)}
+      ${renderSummary(sec.targets, sec.totals, micros)}
+    </section>
+  `).join('');
 
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Plan nutricional · ${escapeHtml(day.name)}</title>
+<title>${escapeHtml(headerTitle)}</title>
 <style>
   @page { size: A4; margin: 12mm; }
   * { box-sizing: border-box; }
@@ -142,6 +206,11 @@ export function buildNutritionPrintHTML({
   header { border-bottom: 2pt solid #111; padding-bottom: 6pt; margin-bottom: 8pt; }
   h1 { font-size: 18pt; margin: 0 0 2pt; letter-spacing: 0.05em; font-weight: 800; }
   .meta { color: #555; font-size: 9.5pt; }
+  .day-section { page-break-inside: avoid; }
+  .day-section.page-break-before { page-break-before: always; }
+  .section-h { margin: 12pt 0 6pt; padding-bottom: 4pt; border-bottom: 1.5pt solid #444; }
+  .section-h h2 { font-size: 14pt; margin: 0; letter-spacing: 0.04em; font-weight: 700; }
+  .section-sub { font-size: 10pt; color: #555; margin-top: 2pt; }
   .targets {
     font-size: 10pt;
     padding: 6pt 8pt;
@@ -153,7 +222,7 @@ export function buildNutritionPrintHTML({
     flex-wrap: wrap;
     gap: 4pt;
   }
-  .targets .pill {
+  .pill {
     display: inline-block;
     padding: 1pt 6pt;
     background: #111;
@@ -246,43 +315,33 @@ export function buildNutritionPrintHTML({
 <body>
   <button class="toolbar" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   <header>
-    <h1>PLAN NUTRICIONAL · ${escapeHtml(day.name.toUpperCase())}</h1>
-    <div class="meta">
-      ${escapeHtml(profile.nombre || 'Plan personal')} · ${escapeHtml(dateStr)}
-      ${day.workout && day.workout !== 'Descanso' ? ` · Entreno: ${escapeHtml(day.workout)}` : ''}
-    </div>
+    <h1>${escapeHtml(headerTitle)}</h1>
+    <div class="meta">${headerSubtitle}</div>
   </header>
 
-  <div class="targets">
-    <div>
-      <span class="pill">DÍA ${escapeHtml(typeLabel)}</span>
-      &nbsp; Objetivo: <strong>${targets.kcal} kcal</strong>
-      · P ${targets.protG}g · CH ${targets.carbG}g · G ${targets.lipG}g
-    </div>
-    <div style="font-size: 9pt; color: #666;">
-      Total consumido: <strong>${fmtNum(totals.kcal)} kcal</strong>
-      (${totals.kcal >= targets.kcal ? '+' : ''}${fmtNum(totals.kcal - targets.kcal)})
-    </div>
-  </div>
+  ${sectionsHtml}
 
-  ${mealSections}
-
-  <section class="summary">
-    <h2>TOTAL DEL DÍA</h2>
-    <div class="grid">
-      <div class="stat"><div class="l">Kcal</div><div class="v">${fmtNum(totals.kcal)}<small> / ${targets.kcal}</small></div></div>
-      <div class="stat"><div class="l">Proteína</div><div class="v">${fmtNum(totals.prot)}<small>g / ${targets.protG}g</small></div></div>
-      <div class="stat"><div class="l">Carbs</div><div class="v">${fmtNum(totals.carb)}<small>g / ${targets.carbG}g</small></div></div>
-      <div class="stat"><div class="l">Grasas</div><div class="v">${fmtNum(totals.fat)}<small>g / ${targets.lipG}g</small></div></div>
-    </div>
-    <div class="micros">
-      ${microRow('Fibra',  totals.fiber,  micros.fiber.target,  micros.fiber.unit,  micros.fiber.type)}
-      ${microRow('Azúcar', totals.sugar,  micros.sugar.target,  micros.sugar.unit,  micros.sugar.type)}
-      ${microRow('Sodio',  totals.sodium, micros.sodium.target, micros.sodium.unit, micros.sodium.type)}
-    </div>
-  </section>
-
-  <div class="footer">Generado por dieta2025 · ${escapeHtml(genStr)}</div>
+  <div class="footer">Generado por App Entrenamiento · ${escapeHtml(genStr)}</div>
 </body>
 </html>`;
+}
+
+/**
+ * Compute a stable signature for a day plan to detect duplicates.
+ * Two days are equivalent if they have the same meals with the same
+ * (foodId, amount, unit) entries.
+ */
+export function dayPlanSignature(meals, dayPlan) {
+  return meals.map((m) => {
+    const entries = (dayPlan?.[m.id] || []).map((e) => `${e.foodId}:${Number(e.amount) || 0}:${e.unit || ''}`).sort();
+    return `${m.id}{${entries.join(',')}}`;
+  }).join('|');
+}
+
+/** Returns true if the day plan has at least one entry. */
+export function dayPlanHasEntries(meals, dayPlan) {
+  for (const m of meals) {
+    if ((dayPlan?.[m.id] || []).length > 0) return true;
+  }
+  return false;
 }

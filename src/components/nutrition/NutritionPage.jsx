@@ -9,6 +9,7 @@ import SavePresetModal from './SavePresetModal.jsx';
 import ApplyPresetModal from './ApplyPresetModal.jsx';
 import PresetsManagerModal from './PresetsManagerModal.jsx';
 import MesocycleModal from './MesocycleModal.jsx';
+import PrintNutritionModal from './PrintNutritionModal.jsx';
 import { useNutritionStore, selectDayPlan, isDaySnapshot } from '../../store/useNutritionStore.js';
 import { useTrainingStore } from '../../store/useTrainingStore.js';
 import { useUIStore } from '../../store/useUIStore.js';
@@ -21,7 +22,7 @@ import {
   sumEntries, computeFoodMacros, MICRO_TARGETS,
 } from '../../lib/calculators.js';
 import { weekDates } from '../../lib/dates.js';
-import { buildNutritionPrintHTML } from '../../lib/printNutrition.js';
+import { buildNutritionPrintHTML, dayPlanSignature, dayPlanHasEntries } from '../../lib/printNutrition.js';
 import { showToast } from '../ui/Toast.jsx';
 
 export default function NutritionPage() {
@@ -40,6 +41,7 @@ export default function NutritionPage() {
   const p = useProfileStore();
 
   const dayPlan = useNutritionStore((s) => selectDayPlan(s, s.activeWeek, s.activeDay));
+  const fullState = useNutritionStore.getState; // for ad-hoc reads inside print handler
   const isSnapshot = useNutritionStore((s) => isDaySnapshot(s, s.activeWeek, s.activeDay));
   const snapshotDays = useMemo(
     () => Object.keys(weeks?.[activeWeek] || {}).map(Number),
@@ -54,6 +56,7 @@ export default function NutritionPage() {
   const [applyPresetFor, setApplyPresetFor] = useState(null); // {mealId, mealLabel}
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [mesoOpen, setMesoOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const mesoInfo = useMemo(
     () => getMesoInfoForWeek(mesocycles, activeMesocycleId, activeWeek),
@@ -103,31 +106,7 @@ export default function NutritionPage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            const html = buildNutritionPrintHTML({
-              profile: p,
-              day: DAYS[activeDay],
-              date: activeDate,
-              dayType: dayType(activeDay),
-              targets,
-              totals,
-              meals,
-              dayPlan,
-              foodsById,
-              micros: MICRO_TARGETS,
-            });
-            const win = window.open('', '_blank', 'width=820,height=1000');
-            if (!win) {
-              showToast('Permite ventanas emergentes para imprimir', 'error');
-              return;
-            }
-            win.document.open();
-            win.document.write(html);
-            win.document.close();
-            win.focus();
-            // Trigger print after content settles
-            setTimeout(() => { try { win.print(); } catch (_) {} }, 350);
-          }}
+          onClick={() => setPrintOpen(true)}
           className="px-4 py-2 text-sm rounded-lg border border-border text-muted hover:text-white hover:border-white/30 transition self-start"
           title="Generar PDF imprimible"
         >
@@ -481,6 +460,105 @@ export default function NutritionPage() {
         onSetActive={(id) => { setActiveMesocycleId(id); showToast(id ? 'Mesociclo activado' : 'Mesociclo desactivado', 'ok'); }}
         onResetStart={(id, wk) => { resetMesoStart(id, wk); showToast('Inicio reseteado a esta semana', 'ok'); }}
         onSetPlan={(id, dt, mealId, presetId) => setMesoPlan(id, dt, mealId, presetId)}
+      />
+
+      <PrintNutritionModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        activeDay={activeDay}
+        weekKey={activeWeek}
+        meals={meals}
+        getDayPlanFor={(d) => selectDayPlan(fullState(), activeWeek, d)}
+        getTargetsFor={(d) => {
+          const tmb = calcTMB(p.sexo, p.peso, p.altura, p.edad);
+          const tdee = calcTDEE(tmb, p.act);
+          const k = Math.round(kcalForDay(d, tdee, p.highPct, p.lowPct));
+          const m = macrosForKcal(k, p.carb, p.prot, p.lip);
+          return { kcal: k, ...m };
+        }}
+        onPrint={(mode) => {
+          const tmb = calcTMB(p.sexo, p.peso, p.altura, p.edad);
+          const tdee = calcTDEE(tmb, p.act);
+          const targetsFor = (d) => {
+            const k = Math.round(kcalForDay(d, tdee, p.highPct, p.lowPct));
+            const m = macrosForKcal(k, p.carb, p.prot, p.lip);
+            return { kcal: k, ...m };
+          };
+          let html;
+          if (mode === 'day') {
+            html = buildNutritionPrintHTML({
+              profile: p,
+              day: DAYS[activeDay],
+              date: activeDate,
+              dayType: dayType(activeDay),
+              targets,
+              totals,
+              meals,
+              dayPlan,
+              foodsById,
+              micros: MICRO_TARGETS,
+            });
+          } else {
+            // Build sections for the whole week, optionally grouped by signature
+            const dayInfos = [];
+            for (let d = 0; d < 7; d++) {
+              const dp = selectDayPlan(fullState(), activeWeek, d);
+              if (!dayPlanHasEntries(meals, dp)) continue;
+              const tg = targetsFor(d);
+              const all = meals.flatMap((m) => dp[m.id] || []);
+              const tot = sumEntries(all, foodsById);
+              dayInfos.push({ d, dp, tg, tot, sig: dayPlanSignature(meals, dp) });
+            }
+            let sections = [];
+            if (mode === 'week-grouped') {
+              const map = new Map();
+              for (const di of dayInfos) {
+                if (!map.has(di.sig)) map.set(di.sig, []);
+                map.get(di.sig).push(di);
+              }
+              sections = [...map.values()].map((group) => {
+                const days = group.map((g) => g.d);
+                const labels = days.map((d) => DAYS[d].name);
+                const types = [...new Set(days.map((d) => dayType(d)))];
+                const typeLabel = types.map((t) => t === 'high' ? 'ALTO' : t === 'low' ? 'BAJO' : 'NORMO').join('/');
+                const first = group[0];
+                return {
+                  title: labels.join(' · '),
+                  subtitle: `Día ${typeLabel} · Objetivo ${first.tg.kcal} kcal · ${days.length} día${days.length !== 1 ? 's' : ''}`,
+                  dayPlan: first.dp,
+                  targets: first.tg,
+                  totals: first.tot,
+                };
+              });
+            } else { // week-separate
+              sections = dayInfos.map(({ d, dp, tg, tot }) => ({
+                title: DAYS[d].name,
+                subtitle: `Día ${dayType(d) === 'high' ? 'ALTO' : dayType(d) === 'low' ? 'BAJO' : 'NORMO'} · Objetivo ${tg.kcal} kcal`,
+                dayPlan: dp,
+                targets: tg,
+                totals: tot,
+              }));
+            }
+            html = buildNutritionPrintHTML({
+              profile: p,
+              meals,
+              foodsById,
+              micros: MICRO_TARGETS,
+              sections,
+              title: mode === 'week-grouped' ? 'PLAN NUTRICIONAL · SEMANA (AGRUPADA)' : 'PLAN NUTRICIONAL · SEMANA',
+            });
+          }
+          const win = window.open('', '_blank', 'width=820,height=1000');
+          if (!win) {
+            showToast('Permite ventanas emergentes para imprimir', 'error');
+            return;
+          }
+          win.document.open();
+          win.document.write(html);
+          win.document.close();
+          win.focus();
+          setTimeout(() => { try { win.print(); } catch (_) {} }, 350);
+        }}
       />
     </div>
   );
