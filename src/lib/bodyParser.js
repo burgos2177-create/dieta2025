@@ -18,8 +18,8 @@
 // `parseBodyReport` keeping the same signature & return shape.
 //
 // 1) CLOUD AI (recommended, highest accuracy)
-//    - Requires adding a tiny backend endpoint (Cloudflare Worker / Vercel
-//      Function / Express route).
+//    - Requires adding a tiny backend endpoint (Cloudflare Worker / Express
+//      route / GitHub Pages Action proxy).
 //    - Forward the image DataURL to Anthropic's Messages API with a vision
 //      content block and a system prompt like the one in PROMPT_TEMPLATE
 //      below. Ask the model to respond with strict JSON matching the keys
