@@ -76,8 +76,13 @@ export default function Dashboard() {
 
   const trainingKcal = (trainingSnapshot?.status === 'closed' ? Number(trainingSnapshot.kcalBurned) || 0 : 0);
   const extraKcal = (extraSessionsToday || []).reduce((a, s) => a + (Number(s.kcal) || 0), 0);
-  const burnedKcal = trainingKcal + extraKcal;
-  const remainingKcal = kcal + burnedKcal - Math.round(consumed.kcal);
+  const exerciseKcal = trainingKcal + extraKcal;
+  // Real total daily expenditure = NEAT TDEE + actual exercise burn (no double count).
+  const totalBurn = Math.round(d.tdee + exerciseKcal);
+  // Net balance: positive = surplus (over what you burned), negative = deficit.
+  const netBalance = Math.round(consumed.kcal) - totalBurn;
+  // Remaining vs Lyle target (planning view): how much you can still eat to hit the target.
+  const remainingVsTarget = kcal - Math.round(consumed.kcal);
 
   // Today's training, if it matches the active day
   const trainingCfg = TR_DAYS_CONFIG.find((c) => c.weekday === activeDay) || null;
@@ -114,7 +119,7 @@ export default function Dashboard() {
         {/* Ring + macros */}
         <Card className="lg:col-span-2" title={`${day.name} · Objetivo calórico`}>
           <div className="flex flex-col md:flex-row items-center gap-6">
-            <KcalRing kcal={kcal} max={maxKcal} />
+            <KcalRing kcal={kcal} tdee={Math.round(d.tdee)} />
             <div className="flex-1 w-full space-y-4">
               <MacroBar label="Carbohidratos" value={macros.carbG} target={mMax.carbG} color="#00e5ff" />
               <MacroBar label="Proteína"      value={macros.protG} target={mMax.protG} color="#22c55e" />
@@ -143,13 +148,6 @@ export default function Dashboard() {
       <Card title={`Balance calórico · ${day.name}${isTodayActive ? ' (hoy)' : ''}`}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <BalanceTile
-            label="Objetivo (Lyle)"
-            value={kcal.toLocaleString()}
-            unit="kcal"
-            tone="cyan"
-            sub="lo que toca comer"
-          />
-          <BalanceTile
             label="Consumido"
             value={Math.round(consumed.kcal).toLocaleString()}
             unit="kcal"
@@ -157,31 +155,36 @@ export default function Dashboard() {
             sub={`${(meals || []).reduce((a, m) => a + (dayPlan?.[m.id]?.length || 0), 0)} alimentos`}
           />
           <BalanceTile
-            label="Quemado en entreno"
-            value={burnedKcal.toLocaleString()}
+            label="Gasto real (NEAT + entreno)"
+            value={totalBurn.toLocaleString()}
             unit="kcal"
             tone="orange"
             sub={
-              trainingKcal > 0 && extraKcal > 0
-                ? `pesas ${trainingKcal} + extra ${extraKcal}`
-                : trainingKcal > 0
-                  ? 'pesas (sesión cerrada)'
-                  : extraKcal > 0
-                    ? `${extraSessionsToday.length} actividad${extraSessionsToday.length !== 1 ? 'es' : ''}`
-                    : 'sin registrar'
+              exerciseKcal > 0
+                ? `${Math.round(d.tdee).toLocaleString()} NEAT + ${exerciseKcal} entreno`
+                : `${Math.round(d.tdee).toLocaleString()} NEAT (sin entreno aún)`
             }
           />
           <BalanceTile
-            label="Restante"
-            value={(remainingKcal >= 0 ? '+' : '') + remainingKcal.toLocaleString()}
+            label="Balance neto"
+            value={(netBalance >= 0 ? '+' : '') + netBalance.toLocaleString()}
             unit="kcal"
-            tone={remainingKcal > 50 ? 'green' : remainingKcal < -50 ? 'red' : 'cyan'}
-            sub={remainingKcal > 0 ? 'puedes comer más' : remainingKcal < 0 ? 'sobrepasaste' : 'en target'}
+            tone={netBalance > 50 ? 'red' : netBalance < -50 ? 'green' : 'cyan'}
+            sub={netBalance > 0 ? 'superávit' : netBalance < 0 ? 'déficit' : 'mantenimiento'}
+          />
+          <BalanceTile
+            label={`vs objetivo Lyle (${kcal.toLocaleString()})`}
+            value={(remainingVsTarget >= 0 ? '+' : '') + remainingVsTarget.toLocaleString()}
+            unit="kcal"
+            tone={remainingVsTarget > 50 ? 'cyan' : remainingVsTarget < -50 ? 'orange' : 'green'}
+            sub={remainingVsTarget > 0 ? 'aún puedes comer' : remainingVsTarget < 0 ? 'pasaste el plan' : 'en target'}
           />
         </div>
         <div className="text-[0.7rem] text-muted/70 mt-3 leading-relaxed">
-          Restante = Objetivo + Quemado − Consumido. Para igualar exactamente el ciclado calórico del día,
-          procura llegar a 0; positivo significa que aún tienes margen para comer; negativo, que excediste el plan.
+          <strong>Gasto real</strong> = TDEE NEAT (Harris-Benedict + factor de actividad sin ejercicio)
+          + las kcal del entreno cerrado y actividades extra del día.
+          <strong className="ml-1">Balance neto</strong> = Consumido − Gasto real (positivo = superávit, negativo = déficit).
+          El <strong>objetivo Lyle</strong> es la meta de ingesta del día según el ciclado.
         </div>
       </Card>
 
@@ -194,7 +197,7 @@ export default function Dashboard() {
           value={trainingDay ? trainingCfg?.focus?.split(':')[0] || 'Sesión' : (extraSessionsToday.length > 0 ? 'Actividad extra' : 'Descanso')}
           sub={
             trainingDay
-              ? `${trainingDay.exercises.length} ejercicios${burnedKcal > 0 ? ` · ${burnedKcal} kcal` : ''}`
+              ? `${trainingDay.exercises.length} ejercicios${exerciseKcal > 0 ? ` · ${exerciseKcal} kcal` : ''}`
               : extraSessionsToday.length > 0
                 ? `${extraSessionsToday.length} sesion${extraSessionsToday.length !== 1 ? 'es' : ''} · ${extraKcal} kcal`
                 : ''

@@ -237,13 +237,14 @@ export function buildSeedNutPlan() {
   return base;
 }
 
-// Activity levels (Harris-Benedict multipliers)
+// NEAT (Non-Exercise Activity Thermogenesis) levels — sin contar ejercicio
+// programado. Las kcal del entrenamiento se SUMAN aparte (snapshot del dia
+// + extra sessions) para evitar doble conteo.
 export const ACTIVITY_LEVELS = [
-  { id: 1.2,   label: 'Sedentario' },
-  { id: 1.375, label: 'Ligero (1-3 d/sem)' },
-  { id: 1.55,  label: 'Moderado (3-5 d/sem)' },
-  { id: 1.725, label: 'Alto (6-7 d/sem)' },
-  { id: 1.9,   label: 'Atleta (2×/día)' },
+  { id: 1.2,   label: 'Sedentario',     sub: 'oficina, poco movimiento (sin ejercicio)' },
+  { id: 1.375, label: 'Ligero',         sub: 'oficina + caminatas o pausas activas' },
+  { id: 1.55,  label: 'Activo',         sub: 'trabajo de pie / muchos pasos diarios' },
+  { id: 1.725, label: 'Muy activo',     sub: 'trabajo físico / labor manual' },
 ];
 
 // Macro presets

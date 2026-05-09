@@ -70,12 +70,16 @@ export default function ProfilePage() {
             <Field label="Altura (cm)">
               <input type="number" value={p.altura} onChange={(e) => p.setField('altura', Number(e.target.value))} />
             </Field>
-            <Field label="Nivel de actividad">
+            <Field label="Nivel de actividad (sin ejercicio)">
               <select value={p.act} onChange={(e) => p.setField('act', Number(e.target.value))}>
                 {ACTIVITY_LEVELS.map((a) => (
-                  <option key={a.id} value={a.id}>{a.label}</option>
+                  <option key={a.id} value={a.id}>{a.label} — {a.sub}</option>
                 ))}
               </select>
+              <div className="text-[0.65rem] text-muted/70 mt-1">
+                Solo el NEAT (vida diaria fuera del entreno). Las kcal del entrenamiento se suman aparte
+                desde la página Entreno (snapshot cerrado o actividades extra).
+              </div>
             </Field>
           </div>
         </Card>
