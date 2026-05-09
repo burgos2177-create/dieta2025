@@ -10,6 +10,9 @@ export const useUIStore = create(
       // Default gym for saving / filtering workout presets
       currentGym: '',
       setCurrentGym: (g) => set({ currentGym: (g || '').trim() }),
+      // Dashboard: keep active day always = today's weekday
+      lockDayToToday: false,
+      setLockDayToToday: (v) => set({ lockDayToToday: !!v }),
     }),
     { name: 'dieta2025_ui' }
   )

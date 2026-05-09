@@ -17,7 +17,7 @@ export default function Nav({ active, onChange }) {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-cyan-600 flex items-center justify-center font-display text-black font-bold">
             D
           </div>
-          <span className="font-display text-xl tracking-wider">DIETA 2025</span>
+          <span className="font-display text-xl tracking-wider">APP ENTRENAMIENTO</span>
         </div>
         <div className="flex-1 overflow-x-auto scrollbar-none [-webkit-overflow-scrolling:touch]">
           <div className="flex gap-1 py-2 w-max ml-auto pr-1">
