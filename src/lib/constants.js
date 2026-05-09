@@ -64,6 +64,24 @@ export function trCfgByWeekday(weekday) {
   return TR_DAYS_CONFIG.find((c) => c.weekday === weekday) || null;
 }
 
+/** Tipos de entrenamiento extra (cardio, boxeo, etc.) que no son la rutina de fuerza. */
+export const EXTRA_SESSION_TYPES = [
+  { id: 'boxeo',     label: 'Boxeo',           icon: '🥊' },
+  { id: 'cardio',    label: 'Cardio',          icon: '🏃' },
+  { id: 'hiit',      label: 'HIIT',            icon: '⚡' },
+  { id: 'bici',      label: 'Bici',            icon: '🚴' },
+  { id: 'natacion',  label: 'Natación',        icon: '🏊' },
+  { id: 'caminata',  label: 'Caminata',        icon: '🚶' },
+  { id: 'futbol',    label: 'Fútbol',          icon: '⚽' },
+  { id: 'yoga',      label: 'Yoga / Movilidad',icon: '🧘' },
+  { id: 'anaerobico',label: 'Anaeróbico',      icon: '💢' },
+  { id: 'otro',      label: 'Otro',            icon: '·'  },
+];
+
+export function extraSessionTypeMeta(id) {
+  return EXTRA_SESSION_TYPES.find((t) => t.id === id) || { id, label: id, icon: '·' };
+}
+
 // ==============================
 // SEED — EXERCISE LIBRARY (todos los ejercicios conocidos)
 // ==============================

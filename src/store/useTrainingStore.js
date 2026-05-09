@@ -211,6 +211,8 @@ export const useTrainingStore = create(
       workoutPresets: [],
       mesocycles: [],
       activeMesocycleId: null,
+      // extraSessions[weekKey][weekday] = [{ id, type, kcal, durationMin, notes, createdAt }]
+      extraSessions: {},
       activeWeek: getMondayKey(new Date()),
       activeDay: todayDayIdx(),
 
@@ -555,6 +557,44 @@ export const useTrainingStore = create(
           };
         }),
 
+      // ── Extra sessions (cardio / boxeo / etc.) ──
+      addExtraSession: (weekKey, weekday, data) =>
+        set((s) => {
+          const session = {
+            id: `es_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+            type: data.type || 'otro',
+            kcal: Number(data.kcal) || 0,
+            durationMin: Number(data.durationMin) || 0,
+            notes: (data.notes || '').trim(),
+            createdAt: Date.now(),
+          };
+          const ex = { ...(s.extraSessions || {}) };
+          const wk = { ...(ex[weekKey] || {}) };
+          wk[weekday] = [...(wk[weekday] || []), session];
+          ex[weekKey] = wk;
+          return { extraSessions: ex };
+        }),
+      updateExtraSession: (weekKey, weekday, id, patch) =>
+        set((s) => {
+          const ex = { ...(s.extraSessions || {}) };
+          const wk = { ...(ex[weekKey] || {}) };
+          wk[weekday] = (wk[weekday] || []).map((es) =>
+            es.id === id ? { ...es, ...patch } : es
+          );
+          ex[weekKey] = wk;
+          return { extraSessions: ex };
+        }),
+      removeExtraSession: (weekKey, weekday, id) =>
+        set((s) => {
+          const ex = { ...(s.extraSessions || {}) };
+          const wk = { ...(ex[weekKey] || {}) };
+          wk[weekday] = (wk[weekday] || []).filter((es) => es.id !== id);
+          if (wk[weekday].length === 0) delete wk[weekday];
+          if (Object.keys(wk).length === 0) delete ex[weekKey];
+          else ex[weekKey] = wk;
+          return { extraSessions: ex };
+        }),
+
       // ── Mesocycles ──
       addMesocycle: (meso) =>
         set((s) => ({
@@ -736,6 +776,7 @@ export const useTrainingStore = create(
             workoutPresets: Array.isArray(data.workoutPresets) ? data.workoutPresets : [],
             mesocycles: Array.isArray(data.mesocycles) ? data.mesocycles : [],
             activeMesocycleId: data.activeMesocycleId || null,
+            extraSessions: data.extraSessions || {},
           });
         } else {
           const s = get();
@@ -743,6 +784,7 @@ export const useTrainingStore = create(
             template: s.template, weeks: s.weeks, log: s.log, library: s.library,
             workoutPresets: s.workoutPresets,
             mesocycles: s.mesocycles, activeMesocycleId: s.activeMesocycleId,
+            extraSessions: s.extraSessions,
           });
         }
         useTrainingStore.subscribe((s) => {
@@ -750,6 +792,7 @@ export const useTrainingStore = create(
             template: s.template, weeks: s.weeks, log: s.log, library: s.library,
             workoutPresets: s.workoutPresets,
             mesocycles: s.mesocycles, activeMesocycleId: s.activeMesocycleId,
+            extraSessions: s.extraSessions,
           });
         });
       },
@@ -765,6 +808,7 @@ export const useTrainingStore = create(
         if (!state.library) state.library = cloneLibrary();
         if (!Array.isArray(state.workoutPresets)) state.workoutPresets = [];
         if (!Array.isArray(state.mesocycles)) state.mesocycles = [];
+        if (!state.extraSessions || typeof state.extraSessions !== 'object') state.extraSessions = {};
         if (state.activeMesocycleId === undefined) state.activeMesocycleId = null;
         if (!state.activeWeek) state.activeWeek = getMondayKey(new Date());
         if (typeof state.activeDay !== 'number') state.activeDay = todayDayIdx();

@@ -8,6 +8,7 @@ import SaveWorkoutPresetModal from './SaveWorkoutPresetModal.jsx';
 import WorkoutPresetsManagerModal from './WorkoutPresetsManagerModal.jsx';
 import LogDetailModal from '../progression/LogDetailModal.jsx';
 import CloseEntryModal from './CloseEntryModal.jsx';
+import ExtraSessionsCard from './ExtraSessionsCard.jsx';
 import WeekNavigator from '../nutrition/WeekNavigator.jsx';
 import { useTrainingStore, selectTrainingDaysForWeek, selectTrainingDay, findMatchingWorkoutPreset, presetToRoutineExercises, routineDayToPresetExercises } from '../../store/useTrainingStore.js';
 import { useNutritionStore } from '../../store/useNutritionStore.js';
@@ -225,6 +226,7 @@ export default function TrainingPage() {
         ))}
       </div>
 
+      <ExtraSessionsCard weekKey={activeWeek} />
 
       <AddExerciseModal
         open={modalOpen}
