@@ -19,8 +19,9 @@ import { useProfileStore } from '../../store/useProfileStore.js';
 import { DAYS } from '../../lib/constants.js';
 import {
   calcTMB, calcTDEE, kcalForDay, macrosForKcal, dayType,
-  sumEntries, computeFoodMacros, MICRO_TARGETS,
+  sumEntries, computeFoodMacros, MICRO_TARGETS, topContributorsByMetric,
 } from '../../lib/calculators.js';
+import BarTooltip from '../ui/BarTooltip.jsx';
 import { weekDates } from '../../lib/dates.js';
 import { buildNutritionPrintHTML, dayPlanSignature, dayPlanHasEntries } from '../../lib/printNutrition.js';
 import { showToast } from '../ui/Toast.jsx';
@@ -73,10 +74,23 @@ export default function NutritionPage() {
     return { kcal, ...m };
   }, [p, activeDay]);
 
-  const totals = useMemo(() => {
-    const all = meals.flatMap((m) => dayPlan[m.id] || []);
-    return sumEntries(all, foodsById);
-  }, [dayPlan, meals, foodsById]);
+  const allEntries = useMemo(
+    () => meals.flatMap((m) => dayPlan[m.id] || []),
+    [dayPlan, meals]
+  );
+  const totals = useMemo(
+    () => sumEntries(allEntries, foodsById),
+    [allEntries, foodsById]
+  );
+  const topBy = useMemo(() => ({
+    kcal:   topContributorsByMetric(allEntries, foodsById, 'kcal'),
+    prot:   topContributorsByMetric(allEntries, foodsById, 'prot'),
+    carb:   topContributorsByMetric(allEntries, foodsById, 'carb'),
+    fat:    topContributorsByMetric(allEntries, foodsById, 'fat'),
+    fiber:  topContributorsByMetric(allEntries, foodsById, 'fiber'),
+    sugar:  topContributorsByMetric(allEntries, foodsById, 'sugar'),
+    sodium: topContributorsByMetric(allEntries, foodsById, 'sodium'),
+  }), [allEntries, foodsById]);
 
   const gap = {
     kcal: targets.kcal - totals.kcal,
@@ -181,7 +195,9 @@ export default function NutritionPage() {
                 <span className="text-muted"> / {targets.kcal}</span>
               </span>
             </div>
-            <MacroBar label="Consumo total" value={totals.kcal} target={targets.kcal} color="#00e5ff" unit="kcal" />
+            <BarTooltip title="Top alimentos por kcal" items={topBy.kcal} unit=" kcal">
+              <MacroBar label="Consumo total" value={totals.kcal} target={targets.kcal} color="#00e5ff" unit="kcal" />
+            </BarTooltip>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <DevLabel label="kcal" diff={-gap.kcal} target={targets.kcal} />
               <DevLabel label="P"   diff={-gap.prot} target={targets.protG} unit="g" />
@@ -190,15 +206,27 @@ export default function NutritionPage() {
             </div>
           </div>
           <div className="space-y-3">
-            <MacroBar label="Proteína"      value={totals.prot} target={targets.protG} color="#22c55e" />
-            <MacroBar label="Carbohidratos" value={totals.carb} target={targets.carbG} color="#00e5ff" />
-            <MacroBar label="Grasas"        value={totals.fat}  target={targets.lipG}  color="#f59e0b" />
+            <BarTooltip title="Top alimentos por proteína" items={topBy.prot} unit="g">
+              <MacroBar label="Proteína" value={totals.prot} target={targets.protG} color="#22c55e" />
+            </BarTooltip>
+            <BarTooltip title="Top alimentos por carbohidratos" items={topBy.carb} unit="g">
+              <MacroBar label="Carbohidratos" value={totals.carb} target={targets.carbG} color="#00e5ff" />
+            </BarTooltip>
+            <BarTooltip title="Top alimentos por grasas" items={topBy.fat} unit="g">
+              <MacroBar label="Grasas" value={totals.fat} target={targets.lipG} color="#f59e0b" />
+            </BarTooltip>
           </div>
         </div>
         <div className="mt-5 pt-4 border-t border-border grid grid-cols-3 gap-3">
-          <MicroStat label="Fibra"  value={totals.fiber}  cfg={MICRO_TARGETS.fiber} />
-          <MicroStat label="Azúcar" value={totals.sugar}  cfg={MICRO_TARGETS.sugar} />
-          <MicroStat label="Sodio"  value={totals.sodium} cfg={MICRO_TARGETS.sodium} />
+          <BarTooltip title="Top alimentos por fibra" items={topBy.fiber} unit="g">
+            <MicroStat label="Fibra"  value={totals.fiber}  cfg={MICRO_TARGETS.fiber} />
+          </BarTooltip>
+          <BarTooltip title="Top alimentos por azúcar" items={topBy.sugar} unit="g">
+            <MicroStat label="Azúcar" value={totals.sugar}  cfg={MICRO_TARGETS.sugar} />
+          </BarTooltip>
+          <BarTooltip title="Top alimentos por sodio" items={topBy.sodium} unit="mg">
+            <MicroStat label="Sodio"  value={totals.sodium} cfg={MICRO_TARGETS.sodium} />
+          </BarTooltip>
         </div>
       </Card>
 

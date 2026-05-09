@@ -133,6 +133,30 @@ export function sumEntries(entries, foodsById) {
   );
 }
 
+/** Top N contributors to a given metric across a list of entries.
+ *  metric ∈ {kcal, prot, carb, fat, fiber, sugar, sodium}.
+ *  Returns [{name, brand, contribution, amount, unit}] sorted desc. */
+export function topContributorsByMetric(entries, foodsById, metric, n = 3) {
+  const items = (entries || [])
+    .map((e) => {
+      const food = foodsById[e.foodId];
+      if (!food) return null;
+      const m = computeFoodMacros(food, e.amount);
+      const contribution = Number(m[metric]) || 0;
+      if (contribution <= 0) return null;
+      return {
+        name: food.name,
+        brand: food.brand || '',
+        contribution,
+        amount: Number(e.amount) || 0,
+        unit: e.unit || food.servingUnit,
+      };
+    })
+    .filter(Boolean);
+  items.sort((a, b) => b.contribution - a.contribution);
+  return items.slice(0, n);
+}
+
 /** Default reference targets for micronutrients (sensible adult defaults). */
 export const MICRO_TARGETS = {
   fiber:  { target: 30,   unit: 'g',  type: 'goal'  }, // hit or exceed
