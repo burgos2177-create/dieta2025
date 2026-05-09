@@ -134,25 +134,35 @@ export function sumEntries(entries, foodsById) {
 }
 
 /** Top N contributors to a given metric across a list of entries.
- *  metric ∈ {kcal, prot, carb, fat, fiber, sugar, sodium}.
- *  Returns [{name, brand, contribution, amount, unit}] sorted desc. */
+ *  Aggregates by foodId so that the same food across multiple meals counts as
+ *  ONE row with summed contribution + total canonical amount.
+ *  metric ∈ {kcal, prot, carb, fat, fiber, sugar, sodium}. */
 export function topContributorsByMetric(entries, foodsById, metric, n = 3) {
-  const items = (entries || [])
-    .map((e) => {
-      const food = foodsById[e.foodId];
-      if (!food) return null;
-      const m = computeFoodMacros(food, e.amount);
-      const contribution = Number(m[metric]) || 0;
-      if (contribution <= 0) return null;
-      return {
+  const byId = new Map();
+  for (const e of (entries || [])) {
+    const food = foodsById[e.foodId];
+    if (!food) continue;
+    const m = computeFoodMacros(food, e.amount);
+    const contribution = Number(m[metric]) || 0;
+    if (contribution <= 0) continue;
+    const cur = byId.get(e.foodId);
+    if (cur) {
+      cur.contribution += contribution;
+      cur.totalAmount += Number(e.amount) || 0;
+      cur.times += 1;
+    } else {
+      byId.set(e.foodId, {
+        foodId: e.foodId,
         name: food.name,
         brand: food.brand || '',
         contribution,
-        amount: Number(e.amount) || 0,
-        unit: e.unit || food.servingUnit,
-      };
-    })
-    .filter(Boolean);
+        totalAmount: Number(e.amount) || 0,
+        unit: food.servingUnit,
+        times: 1,
+      });
+    }
+  }
+  const items = [...byId.values()];
   items.sort((a, b) => b.contribution - a.contribution);
   return items.slice(0, n);
 }
