@@ -1,3 +1,5 @@
+import { useProfileStore } from '../../store/useProfileStore.js';
+
 const TABS = [
   { id: 'dashboard',   label: 'Dashboard' },
   { id: 'nutrition',   label: 'Nutrición' },
@@ -10,12 +12,14 @@ const TABS = [
 ];
 
 export default function Nav({ active, onChange }) {
+  const nombre = useProfileStore((s) => s.nombre);
+  const initial = (nombre || '?').trim().charAt(0).toUpperCase() || '?';
   return (
     <nav className="sticky top-0 z-30 bg-bg/85 backdrop-blur border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 py-3 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-cyan-600 flex items-center justify-center font-display text-black font-bold">
-            D
+            {initial}
           </div>
           <span className="font-display text-xl tracking-wider">APP ENTRENAMIENTO</span>
         </div>
