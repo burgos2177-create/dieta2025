@@ -11,6 +11,7 @@ import {
 } from '../lib/calculators.js';
 import { showToast } from '../components/ui/Toast.jsx';
 import BodyLogSection from '../components/body/BodyLogSection.jsx';
+import { downloadBackup, restoreFromFile } from '../lib/backup.js';
 
 export default function ProfilePage() {
   const p = useProfileStore();
@@ -250,6 +251,56 @@ export default function ProfilePage() {
       </Card>
 
       <BodyLogSection />
+
+      <Card title="Respaldo de datos">
+        <div className="text-xs text-muted mb-3 leading-relaxed">
+          Descarga un archivo JSON con TODOS tus datos (perfil, nutrición, alimentos, entreno,
+          bitácora corporal y suplementos). Si la nube falla o cambias de dispositivo, restaura
+          desde aquí.
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              try {
+                downloadBackup();
+                showToast('Backup descargado', 'ok');
+              } catch (e) {
+                showToast('Error generando backup', 'error');
+                console.error(e);
+              }
+            }}
+            className="px-4 py-2 text-sm rounded-lg bg-accent text-black font-semibold hover:brightness-110"
+          >
+            💾 Descargar backup
+          </button>
+          <label className="px-4 py-2 text-sm rounded-lg border border-border text-muted hover:text-white cursor-pointer">
+            ⬆ Restaurar desde archivo
+            <input
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file) return;
+                if (!confirm(`¿Restaurar desde "${file.name}"?\n\nEsto REEMPLAZARÁ tus datos actuales (perfil, nutrición, alimentos, entreno, etc.). Se recargará la página al terminar.`)) return;
+                try {
+                  await restoreFromFile(file);
+                  showToast('Backup restaurado · recargando…', 'ok');
+                  setTimeout(() => window.location.reload(), 1000);
+                } catch (err) {
+                  showToast('Archivo inválido o corrupto', 'error');
+                  console.error(err);
+                }
+              }}
+            />
+          </label>
+        </div>
+        <div className="text-[0.65rem] text-muted/70 mt-3">
+          Tip: descarga un backup periódicamente. Las fotos de la bitácora corporal NO se
+          incluyen (se quedan solo en tu navegador) — el backup solo guarda los datos de medidas.
+        </div>
+      </Card>
     </div>
   );
 }
