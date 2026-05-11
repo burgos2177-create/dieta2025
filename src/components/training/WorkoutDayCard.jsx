@@ -41,105 +41,108 @@ export default function WorkoutDayCard({
             setOpen(!open);
           }
         }}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.02] transition cursor-pointer outline-none focus:ring-1 focus:ring-accent/40 rounded-card"
+        className="w-full px-4 sm:px-5 py-3 sm:py-4 hover:bg-white/[0.02] transition cursor-pointer outline-none focus:ring-1 focus:ring-accent/40 rounded-card"
       >
-        <div className="flex items-center gap-3 min-w-0">
+        {/* Row 1: día + título + chevron */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Pill tone={tone}>{cfg.label}</Pill>
-          <div className="text-left min-w-0">
-            <div className="flex items-baseline gap-2 min-w-0">
-              <div className="font-display text-lg text-white tracking-wide truncate">{cfg.focus}</div>
-              {isClosed ? (
-                <span
-                  className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/20 bg-white/[0.04] text-muted"
-                  title={`Cerrado ${closedDate}${kcalBurned > 0 ? ` · ${kcalBurned} kcal` : ''}`}
-                >
-                  🔒 Cerrado
-                </span>
-              ) : isOpenStatus ? (
-                <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/40 bg-accent/10 text-accent">
-                  ● En curso
-                </span>
-              ) : (
-                <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted">
-                  Plan teórico
-                </span>
-              )}
-              {viewPlanned && !isPlanned && (
-                <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-warn/40 bg-warn/10 text-warn">
-                  👁 Vista plan
-                </span>
-              )}
-            </div>
-            <div className="text-xs text-muted">
-              {renderedDay?.exercises?.length || 0} ejercicios
-              {isClosed && kcalBurned > 0 && (
-                <span className="ml-2 text-accent">· {kcalBurned} kcal</span>
-              )}
-              {isClosed && kcalBurned === 0 && (
-                <span className="ml-2 text-muted/70">· kcal no medido</span>
-              )}
-            </div>
+          <div className="font-display text-base sm:text-lg text-white tracking-wide truncate flex-1 min-w-0">
+            {cfg.focus}
           </div>
+          <span className="text-muted text-sm shrink-0">{open ? '▾' : '▸'}</span>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="text-right">
-            <div className="font-mono text-accent">{totalVol.toFixed(0)} kg vol</div>
-            <div className="text-[0.65rem] text-muted">{open ? '▾' : '▸'}</div>
-          </div>
-          {!isPlanned && theoretical && (
-            <div onClick={(e) => e.stopPropagation()}>
+
+        {/* Row 2: badges + meta + volumen + acciones */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          {isClosed ? (
+            <span
+              className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/20 bg-white/[0.04] text-muted"
+              title={`Cerrado ${closedDate}${kcalBurned > 0 ? ` · ${kcalBurned} kcal` : ''}`}
+            >
+              🔒 Cerrado
+            </span>
+          ) : isOpenStatus ? (
+            <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/40 bg-accent/10 text-accent">
+              ● En curso
+            </span>
+          ) : (
+            <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted">
+              Plan teórico
+            </span>
+          )}
+          {viewPlanned && !isPlanned && (
+            <span className="text-[0.6rem] uppercase tracking-wider px-1.5 py-0.5 rounded border border-warn/40 bg-warn/10 text-warn">
+              👁 Vista plan
+            </span>
+          )}
+          <span className="text-xs text-muted">
+            {renderedDay?.exercises?.length || 0} ej.
+            {isClosed && kcalBurned > 0 && (
+              <span className="ml-1 text-accent">· {kcalBurned} kcal</span>
+            )}
+            {isClosed && kcalBurned === 0 && (
+              <span className="ml-1 text-muted/70">· kcal n/d</span>
+            )}
+          </span>
+
+          {/* Bloque derecho: volumen + acciones */}
+          <div className="ml-auto flex items-center gap-1">
+            <span className="font-mono text-accent text-xs sm:text-sm whitespace-nowrap">
+              {totalVol.toFixed(0)} kg
+            </span>
+            {!isPlanned && theoretical && (
               <button
-                onClick={() => setViewPlanned((v) => !v)}
+                onClick={(e) => { e.stopPropagation(); setViewPlanned((v) => !v); }}
                 title={viewPlanned ? 'Volver a la vista normal' : 'Ver el plan teórico (visual, no toca tu registro)'}
-                className={`px-2 py-1 text-xs transition ${viewPlanned ? 'text-warn' : 'text-muted hover:text-warn'}`}
+                className={`px-1.5 py-1 text-sm transition ${viewPlanned ? 'text-warn' : 'text-muted hover:text-warn'}`}
               >
                 👁
               </button>
-            </div>
-          )}
-          {isOpenStatus && (
-            <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
-              <button
-                onClick={onResetToPlanned}
-                title="Resetear los valores del entrenamiento al plan teórico (mantiene la entrada abierta)"
-                className="text-muted hover:text-warn px-2 py-1 text-xs"
-              >
-                🔄
-              </button>
-              <button
-                onClick={onResetDay}
-                title="Descartar la entrada y volver al plan teórico (borra el registro de este día)"
-                className="text-muted hover:text-bad px-2 py-1 text-xs"
-              >
-                ↺
-              </button>
-              <button
-                onClick={onSaveAsTemplate}
-                title="Guardar como plantilla"
-                className="text-muted hover:text-accent px-2 py-1 text-xs"
-              >
-                💾
-              </button>
-            </div>
-          )}
-          {isClosed && (
-            <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
-              <button
-                onClick={onResetToPlanned}
-                title="Resetear los valores al plan teórico (también borra esta entrada de la bitácora)"
-                className="text-muted hover:text-warn px-2 py-1 text-xs"
-              >
-                🔄
-              </button>
-              <button
-                onClick={onReopenEntry}
-                title="Reabrir el entrenamiento (también borra esta entrada de la bitácora)"
-                className="text-muted hover:text-accent px-2 py-1 text-xs"
-              >
-                🔓
-              </button>
-            </div>
-          )}
+            )}
+            {isOpenStatus && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onResetToPlanned?.(); }}
+                  title="Resetear los valores del entrenamiento al plan teórico (mantiene la entrada abierta)"
+                  className="text-muted hover:text-warn px-1.5 py-1 text-sm"
+                >
+                  🔄
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onResetDay?.(); }}
+                  title="Descartar la entrada y volver al plan teórico (borra el registro de este día)"
+                  className="text-muted hover:text-bad px-1.5 py-1 text-sm"
+                >
+                  ↺
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSaveAsTemplate?.(); }}
+                  title="Guardar como plantilla"
+                  className="text-muted hover:text-accent px-1.5 py-1 text-sm"
+                >
+                  💾
+                </button>
+              </>
+            )}
+            {isClosed && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onResetToPlanned?.(); }}
+                  title="Resetear los valores al plan teórico (también borra esta entrada de la bitácora)"
+                  className="text-muted hover:text-warn px-1.5 py-1 text-sm"
+                >
+                  🔄
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReopenEntry?.(); }}
+                  title="Reabrir el entrenamiento (también borra esta entrada de la bitácora)"
+                  className="text-muted hover:text-accent px-1.5 py-1 text-sm"
+                >
+                  🔓
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
