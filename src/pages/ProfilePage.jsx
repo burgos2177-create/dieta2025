@@ -12,6 +12,7 @@ import {
 import { showToast } from '../components/ui/Toast.jsx';
 import BodyLogSection from '../components/body/BodyLogSection.jsx';
 import { downloadBackup, restoreFromFile } from '../lib/backup.js';
+import DiagnosticCard from '../components/diagnostic/DiagnosticCard.jsx';
 
 export default function ProfilePage() {
   const p = useProfileStore();
@@ -301,6 +302,8 @@ export default function ProfilePage() {
           incluyen (se quedan solo en tu navegador) — el backup solo guarda los datos de medidas.
         </div>
       </Card>
+
+      <DiagnosticCard />
     </div>
   );
 }
