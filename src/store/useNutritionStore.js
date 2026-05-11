@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { buildSeedNutPlan, MEALS_CONFIG } from '../lib/constants';
-import { cloudLoad, cloudSave } from '../lib/cloudSync';
+import { cloudLoadSafe, cloudSave } from '../lib/cloudSync';
 import { getMondayKey, todayDayIdx } from '../lib/dates';
 import { dayType } from '../lib/calculators';
 import { getMesoInfoForWeek, materializeMesoDay } from '../lib/mesocycle';
@@ -296,8 +296,13 @@ export const useNutritionStore = create(
 
       // ── Cloud sync ──
       _initCloud: async () => {
-        const data = await cloudLoad(CLOUD_KEY);
-        if (data) {
+        const r = await cloudLoadSafe(CLOUD_KEY);
+        if (!r.ok) {
+          console.warn('[nutrition] sync deshabilitado en esta sesión por error inicial.');
+          return;
+        }
+        if (r.found && r.data) {
+          const data = r.data;
           const legacyPlan = data.plan;
           const meals = Array.isArray(data.meals) && data.meals.length ? data.meals : DEFAULT_MEALS;
           const template = ensureDaysShape(data.template || legacyPlan || buildSeedNutPlan(), meals);

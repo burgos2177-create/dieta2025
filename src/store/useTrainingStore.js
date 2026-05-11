@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { SEED_TRAINING, SEED_LIBRARY, TR_DAYS_CONFIG } from '../lib/constants';
-import { cloudLoad, cloudSave } from '../lib/cloudSync';
+import { cloudLoadSafe, cloudSave } from '../lib/cloudSync';
 import { getMondayKey, todayDayIdx } from '../lib/dates';
 import { getMesoInfoForWeek } from '../lib/mesocycle';
 import { computeWeightKg } from '../lib/equipment';
@@ -757,8 +757,13 @@ export const useTrainingStore = create(
 
       // ── Cloud sync ──
       _initCloud: async () => {
-        const data = await cloudLoad(CLOUD_KEY);
-        if (data) {
+        const r = await cloudLoadSafe(CLOUD_KEY);
+        if (!r.ok) {
+          console.warn('[training] sync deshabilitado en esta sesión por error inicial.');
+          return;
+        }
+        if (r.found && r.data) {
+          const data = r.data;
           // Migrate legacy cloud (had `days` array)
           const legacy = data.days;
           let template = data.template;

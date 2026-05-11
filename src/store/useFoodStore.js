@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { SEED_FOODS, FOOD_CATEGORIES } from '../lib/constants';
-import { cloudLoad, cloudSave } from '../lib/cloudSync';
+import { cloudLoadSafe, cloudSave } from '../lib/cloudSync';
 
 const CLOUD_KEY = 'foods';
 const DEFAULT_CATEGORIES = FOOD_CATEGORIES;
@@ -92,11 +92,18 @@ export const useFoodStore = create(
 
       // ── Cloud sync ──────────────────────────────────────────────
       _initCloud: async () => {
-        const data = await cloudLoad(CLOUD_KEY);
-        if (data?.foods) {
+        const r = await cloudLoadSafe(CLOUD_KEY);
+        if (!r.ok) {
+          // Error de red/auth — NO subimos seed encima de lo que pueda haber
+          // en la nube. El usuario sigue trabajando local; la próxima recarga
+          // intentará re-sincronizar.
+          console.warn('[foods] sync deshabilitado en esta sesión por error inicial.');
+          return;
+        }
+        if (r.found && r.data?.foods) {
           set({
-            foods: mergeSeed(data.foods),
-            categories: ensureCategories(data.categories),
+            foods: mergeSeed(r.data.foods),
+            categories: ensureCategories(r.data.categories),
           });
         } else {
           const s = get();

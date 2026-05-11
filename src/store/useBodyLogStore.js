@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { cloudLoad, cloudSave } from '../lib/cloudSync';
+import { cloudLoadSafe, cloudSave } from '../lib/cloudSync';
 
 const CLOUD_KEY = 'bodylog';
 
@@ -30,17 +30,20 @@ export const useBodyLogStore = create(
 
       // ── Cloud sync ──────────────────────────────────────────────
       _initCloud: async () => {
-        const data = await cloudLoad(CLOUD_KEY);
-        if (data?.entries) {
+        const r = await cloudLoadSafe(CLOUD_KEY);
+        if (!r.ok) {
+          console.warn('[bodylog] sync deshabilitado en esta sesión por error inicial.');
+          return;
+        }
+        if (r.found && r.data?.entries) {
           // Las fotos (base64) no se suben a Firestore — se quedan solo en local
           const local = get().entries;
-          const merged = data.entries.map((e) => {
+          const merged = r.data.entries.map((e) => {
             const localEntry = local.find((l) => l.id === e.id);
             return localEntry?.photo ? { ...e, photo: localEntry.photo } : e;
           });
           set({ entries: merged });
         } else {
-          // Subir sin fotos (para no exceder límite de 1MB de Firestore)
           const entries = get().entries.map(({ photo, ...e }) => e);
           cloudSave(CLOUD_KEY, { entries });
         }

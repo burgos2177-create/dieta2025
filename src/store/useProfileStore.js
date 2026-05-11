@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { cloudLoad, cloudSave } from '../lib/cloudSync';
+import { cloudLoadSafe, cloudSave } from '../lib/cloudSync';
 
 const CLOUD_KEY = 'profile';
 
@@ -30,9 +30,13 @@ export const useProfileStore = create(
 
       // ── Cloud sync ──────────────────────────────────────────────
       _initCloud: async () => {
-        const data = await cloudLoad(CLOUD_KEY);
-        if (data) {
-          const { setField, setMacros, _initCloud, ...profile } = data;
+        const r = await cloudLoadSafe(CLOUD_KEY);
+        if (!r.ok) {
+          console.warn('[profile] sync deshabilitado en esta sesión por error inicial.');
+          return;
+        }
+        if (r.found && r.data) {
+          const { setField, setMacros, _initCloud, ...profile } = r.data;
           set(profile);
         } else {
           const { setField, setMacros, _initCloud, ...profile } = get();

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { SEED_SUPPLEMENTS } from '../lib/supplementsSeed';
-import { cloudLoad, cloudSave } from '../lib/cloudSync';
+import { cloudLoadSafe, cloudSave } from '../lib/cloudSync';
 import { ymd, parseKey } from '../lib/dates';
 
 const CLOUD_KEY = 'supplements';
@@ -105,12 +105,16 @@ export const useSupplementStore = create(
 
       // ── Cloud sync ──
       _initCloud: async () => {
-        const data = await cloudLoad(CLOUD_KEY);
-        if (data) {
+        const r = await cloudLoadSafe(CLOUD_KEY);
+        if (!r.ok) {
+          console.warn('[supplements] sync deshabilitado en esta sesión por error inicial.');
+          return;
+        }
+        if (r.found && r.data) {
           set({
-            library: mergeSeed(data.library),
-            intake: data.intake || {},
-            protocols: Array.isArray(data.protocols) ? data.protocols : [],
+            library: mergeSeed(r.data.library),
+            intake: r.data.intake || {},
+            protocols: Array.isArray(r.data.protocols) ? r.data.protocols : [],
           });
         } else {
           const s = get();
