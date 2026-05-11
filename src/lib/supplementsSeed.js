@@ -35,7 +35,7 @@ export const SEED_SUPPLEMENTS = [
   },
 ];
 
-export const SUPPLEMENT_UNITS = ['g', 'mg', 'mcg', 'ml', 'scoop', 'cápsula', 'gota', 'tableta', 'sobre'];
+export const SUPPLEMENT_UNITS = ['g', 'mg', 'mcg', 'UI', 'ml', 'scoop', 'cápsula', 'gota', 'tableta', 'sobre'];
 
 export const SUPPLEMENT_TIMING_PRESETS = [
   { id: 'mañana',       label: 'Mañana',       icon: '☀️', order: 1 },
